@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "360638452983",
+    "project_id": "circlebirthdays",
+    "storage_bucket": "circlebirthdays.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:360638452983:android:16d356a0c08e91b534aff2",
+        "android_client_info": {
+          "package_name": "com.example.circlebirthdays"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhdvWtQpVKrRrslgSM_Q_xDX9U_bhZhNY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
