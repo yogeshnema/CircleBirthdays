@@ -67,19 +67,32 @@ object FirebaseManager {
 
     suspend fun approveChange(pendingMember: Member) {
         try {
-            val approvedMember = pendingMember.copy(status = "APPROVED")
-            
-            // 1. Add to main collection
-            db.collection("members")
-                .document(approvedMember.id)
-                .set(approvedMember)
-                .await()
+            db.runTransaction { transaction ->
+                val memberRef = db.collection("members").document(pendingMember.id)
+                val snapshot = transaction.get(memberRef)
+                val existing = if (snapshot.exists()) snapshot.toObject(Member::class.java) else null
                 
-            // 2. Remove from pending
-            db.collection("pending_updates")
-                .document(pendingMember.id)
-                .delete()
-                .await()
+                // If non-admin, keep the existing global relationship and update manualRelationships instead
+                val baseMember = pendingMember.copy(
+                    status = "APPROVED",
+                    relationship = if (pendingMember.requestedBy != null) (existing?.relationship ?: "") else pendingMember.relationship,
+                    manualRelationships = existing?.manualRelationships ?: emptyMap(),
+                    fcmToken = existing?.fcmToken ?: pendingMember.fcmToken,
+                    lastLoggedIn = existing?.lastLoggedIn ?: pendingMember.lastLoggedIn,
+                    password = existing?.password ?: pendingMember.password,
+                    requestedBy = null,
+                    requestedByName = null,
+                    requestedRelationship = null
+                )
+                
+                val finalManual = baseMember.manualRelationships.toMutableMap()
+                if (pendingMember.requestedBy != null && pendingMember.requestedRelationship != null) {
+                    finalManual[pendingMember.requestedBy] = pendingMember.requestedRelationship
+                }
+                
+                transaction.set(memberRef, baseMember.copy(manualRelationships = finalManual))
+                transaction.delete(db.collection("pending_updates").document(pendingMember.id))
+            }.await()
             android.util.Log.d("FirebaseManager", "Approved change for ${pendingMember.name}")
         } catch (e: Exception) {
             android.util.Log.e("FirebaseManager", "Failed to approve change", e)
@@ -89,16 +102,23 @@ object FirebaseManager {
 
     suspend fun clearAll() {
         try {
-            val collections = listOf("members", "pending_updates")
+            val collections = listOf("members", "pending_updates", "memories", "discussions", "channels", "relationship_overrides")
             for (collectionName in collections) {
                 val snapshot = db.collection(collectionName).get().await()
                 val batch = db.batch()
                 snapshot.documents.forEach { doc ->
                     batch.delete(doc.reference)
+                    // If it's a channel, we also need to delete messages subcollection
+                    if (collectionName == "channels") {
+                        val messages = doc.reference.collection("messages").get().await()
+                        messages.documents.forEach { msg ->
+                            batch.delete(msg.reference)
+                        }
+                    }
                 }
                 batch.commit().await()
             }
-            android.util.Log.d("FirebaseManager", "Successfully cleared all members and pending updates")
+            android.util.Log.d("FirebaseManager", "Successfully cleared all database collections")
         } catch (e: Exception) {
             android.util.Log.e("FirebaseManager", "Failed to clear database", e)
             throw e
@@ -229,6 +249,69 @@ object FirebaseManager {
                 val members = snapshot?.toObjects(Member::class.java) ?: emptyList()
                 onResult(members)
             }
+    }
+
+    suspend fun submitRelationshipOverride(override: RelationshipOverride) {
+        try {
+            db.collection("relationship_overrides")
+                .document(override.id)
+                .set(override)
+                .await()
+        } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Failed to submit relationship override", e)
+            throw e
+        }
+    }
+
+    suspend fun updateManualRelationship(targetId: String, observerId: String, relationship: String) {
+        try {
+            db.runTransaction { transaction ->
+                val memberRef = db.collection("members").document(targetId)
+                val snapshot = transaction.get(memberRef)
+                val member = snapshot.toObject(Member::class.java) ?: return@runTransaction
+                
+                val updatedManual = member.manualRelationships.toMutableMap()
+                updatedManual[observerId] = relationship
+                
+                transaction.update(memberRef, "manualRelationships", updatedManual)
+            }.await()
+        } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Failed to update manual relationship", e)
+            throw e
+        }
+    }
+
+    fun getRelationshipOverrides(onResult: (List<RelationshipOverride>) -> Unit) {
+        db.collection("relationship_overrides")
+            .whereEqualTo("status", "PENDING")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val overrides = snapshot?.toObjects(RelationshipOverride::class.java) ?: emptyList()
+                onResult(overrides)
+            }
+    }
+
+    suspend fun approveRelationshipOverride(override: RelationshipOverride) {
+        try {
+            db.runTransaction { transaction ->
+                val memberRef = db.collection("members").document(override.targetId)
+                val snapshot = transaction.get(memberRef)
+                val member = snapshot.toObject(Member::class.java) ?: return@runTransaction
+                
+                val updatedManual = member.manualRelationships.toMutableMap()
+                updatedManual[override.observerId] = override.relationship
+                
+                transaction.update(memberRef, "manualRelationships", updatedManual)
+                transaction.delete(db.collection("relationship_overrides").document(override.id))
+            }.await()
+            
+            // Note: Cloud Functions should ideally handle the actual FCM sending based on the 
+            // document deletion/update, but we would trigger it here if we had a dedicated 
+            // notification service endpoint.
+        } catch (e: Exception) {
+            android.util.Log.e("FirebaseManager", "Failed to approve relationship override", e)
+            throw e
+        }
     }
 
     // Gallery / Memories

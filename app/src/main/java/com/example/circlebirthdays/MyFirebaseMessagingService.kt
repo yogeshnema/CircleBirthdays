@@ -32,8 +32,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     private fun sendNotification(title: String, messageBody: String, type: String? = null, senderId: String? = null) {
         val intent = Intent(this, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            if (type == "CHAT" && senderId != null) {
-                putExtra("navigate_to", "CHAT")
+            if (type != null) {
+                putExtra("navigate_to", type)
+            }
+            if (senderId != null) {
                 putExtra("sender_id", senderId)
             }
         }

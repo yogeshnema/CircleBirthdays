@@ -56,6 +56,23 @@ fun String.hash(): String {
     return bytes.joinToString("") { "%02x".format(it) }
 }
 
+fun safeOpenUri(context: android.content.Context, uriString: String?) {
+    if (uriString.isNullOrBlank()) return
+    try {
+        val formattedUri = if (!uriString.startsWith("http://") && !uriString.startsWith("https://")) {
+            "https://$uriString"
+        } else {
+            uriString
+        }
+        val uri = formattedUri.toUri()
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        android.util.Log.e("CircleBirthdays", "Failed to open URI: $uriString", e)
+        android.widget.Toast.makeText(context, "Could not open link", android.widget.Toast.LENGTH_SHORT).show()
+    }
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -116,6 +133,7 @@ fun CircleBirthdaysApp(intent: android.content.Intent? = null) {
     var discussions by remember { mutableStateOf<List<Discussion>>(emptyList()) }
     var channels by remember { mutableStateOf<List<ChatChannel>>(emptyList()) }
     var chatMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
+    var relationshipOverrides by remember { mutableStateOf<List<RelationshipOverride>>(emptyList()) }
 
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
     var currentUser by remember { mutableStateOf<Member?>(null) }
@@ -172,27 +190,37 @@ fun CircleBirthdaysApp(intent: android.content.Intent? = null) {
                 android.util.Log.e("CircleBirthdays", "Firestore pending error: ${error.message}")
             }
         )
+
+        // Listen for all memories and discussions if admin, to ensure real-time updates
+        FirebaseManager.getMemories(onlyApproved = false) { fetched ->
+            if (currentUser?.isAdmin == true) memories = fetched
+        }
+        FirebaseManager.getDiscussions(onlyApproved = false) { fetched ->
+            if (currentUser?.isAdmin == true) discussions = fetched
+        }
     }
 
     // Fetch Memories based on user role and populate relationships
     LaunchedEffect(currentUser) {
         currentUser?.let { user ->
             members = FamilyUtils.populateAllLinks(members, user)
-        }
-        val isAdmin = currentUser?.isAdmin == true
-        FirebaseManager.getMemories(onlyApproved = !isAdmin) { fetched ->
-            memories = fetched
-        }
-        FirebaseManager.getDiscussions(onlyApproved = !isAdmin) { fetched ->
-            discussions = fetched
-        }
-        
-        currentUser?.let { user ->
+            
+            val isAdmin = user.isAdmin
+            FirebaseManager.getMemories(onlyApproved = !isAdmin) { fetched ->
+                memories = fetched
+            }
+            FirebaseManager.getDiscussions(onlyApproved = !isAdmin) { fetched ->
+                discussions = fetched
+            }
+
             FirebaseManager.getChannels(user.id) { fetched ->
                 channels = fetched
             }
             if (user.isAdmin) {
                 FirebaseMessaging.getInstance().subscribeToTopic("admin_approvals")
+                FirebaseManager.getRelationshipOverrides { fetched ->
+                    relationshipOverrides = fetched
+                }
             } else {
                 FirebaseMessaging.getInstance().unsubscribeFromTopic("admin_approvals")
             }
@@ -259,6 +287,8 @@ fun CircleBirthdaysApp(intent: android.content.Intent? = null) {
             members.find { it.id == senderId }?.let { otherMember ->
                 currentScreen = Screen.Chat(otherMember)
             }
+        } else if (navigateTo == "OVERRIDE_APPROVED") {
+            currentScreen = Screen.Dashboard
         }
     }
 
@@ -334,20 +364,22 @@ fun CircleBirthdaysApp(intent: android.content.Intent? = null) {
                     onImportCsv = { csvPickerLauncher.launch("*/*") },
                     onApprove = { scope.launch { FirebaseManager.approveChange(it) } },
                     onClearAll = { scope.launch { FirebaseManager.clearAll() } },
-                    onChat = { currentScreen = Screen.Chat(it) }
+                    onChat = { currentScreen = Screen.Chat(it) },
+                    overrides = relationshipOverrides,
+                    onApproveOverride = { scope.launch { FirebaseManager.approveRelationshipOverride(it) } }
                 )
                 is Screen.Gallery -> if (user != null) GalleryScreen(
                     user = user,
                     memories = memories,
                     onBack = { currentScreen = Screen.Dashboard },
-                    onUpload = { desc, uri -> scope.launch {
+                    onUpload = { desc: String, uri: Uri -> scope.launch {
                         val url = FirebaseManager.uploadPhoto(uri)
                         FirebaseManager.submitMemory(Memory(id=UUID.randomUUID().toString(), imageUrl=url, caption=desc, userName=user.name, status=if(user.isAdmin) "APPROVED" else "PENDING"))
                     }},
-                    onDelete = { scope.launch { FirebaseManager.deleteMemory(it) } },
-                    onApprove = { scope.launch { FirebaseManager.approveMemory(it) } },
-                    onToggleReaction = { mid, type -> scope.launch { FirebaseManager.toggleReaction(mid, type, user.id) } },
-                    onAddComment = { mid, text -> 
+                    onDelete = { mid: String -> scope.launch { FirebaseManager.deleteMemory(mid) } },
+                    onApprove = { mid: String -> scope.launch { FirebaseManager.approveMemory(mid) } },
+                    onToggleReaction = { mid: String, type: String -> scope.launch { FirebaseManager.toggleReaction(mid, type, user.id) } },
+                    onAddComment = { mid: String, text: String -> 
                         scope.launch {
                             val comment = Comment(
                                 id = UUID.randomUUID().toString(),
@@ -363,14 +395,14 @@ fun CircleBirthdaysApp(intent: android.content.Intent? = null) {
                     user = user,
                     discussions = discussions,
                     onBack = { currentScreen = Screen.Dashboard },
-                    onPost = { disc, uri -> scope.launch {
+                    onPost = { disc: Discussion, uri: Uri? -> scope.launch {
                         val url = if (uri != null) FirebaseManager.uploadPhoto(uri) else null
                         FirebaseManager.submitDiscussion(if (disc.type == "IMAGE") disc.copy(content = url ?: "", status = if(user.isAdmin) "APPROVED" else "PENDING") else disc.copy(status = if(user.isAdmin) "APPROVED" else "PENDING"))
                     }},
-                    onDelete = { scope.launch { FirebaseManager.deleteDiscussion(it) } },
-                    onApprove = { scope.launch { FirebaseManager.approveDiscussion(it) } },
-                    onVote = { did, oid, uid -> scope.launch { FirebaseManager.voteInPoll(did, oid, uid) } },
-                    onAddComment = { did, text -> 
+                    onDelete = { did: String -> scope.launch { FirebaseManager.deleteDiscussion(did) } },
+                    onApprove = { did: String -> scope.launch { FirebaseManager.approveDiscussion(did) } },
+                    onVote = { did: String, oid: String, uid: String -> scope.launch { FirebaseManager.voteInPoll(did, oid, uid) } },
+                    onAddComment = { did: String, text: String -> 
                         scope.launch {
                             val comment = Comment(
                                 id = UUID.randomUUID().toString(),
@@ -385,13 +417,35 @@ fun CircleBirthdaysApp(intent: android.content.Intent? = null) {
                 is Screen.EditProfile -> if (user != null) EditProfileScreen(
                     member = screen.member,
                     currentUser = user,
-                    onSave = { updated, uri -> scope.launch {
+                    onSave = { updated: Member, uri: Uri? -> scope.launch {
                         val finalMember = if (uri != null) updated.copy(photoUrl = FirebaseManager.uploadPhoto(uri)) else updated
-                        FirebaseManager.submitChange(finalMember, user.isAdmin)
+                        val memberWithRequester = if (!user.isAdmin) {
+                            // If it's a non-admin editing someone else (or even themselves), 
+                            // and they changed the relationship field, we treat it as a requested relationship.
+                            finalMember.copy(
+                                requestedBy = user.id, 
+                                requestedByName = user.name,
+                                requestedRelationship = updated.relationship
+                            )
+                        } else finalMember
+                        FirebaseManager.submitChange(memberWithRequester, user.isAdmin)
                         currentScreen = Screen.ProfileList
                     }},
                     onCancel = { currentScreen = Screen.ProfileList },
-                    onHome = { currentScreen = Screen.Dashboard }
+                    onHome = { currentScreen = Screen.Dashboard },
+                    onRequestOverride = { rel: String -> scope.launch {
+                        screen.member?.let { target ->
+                            FirebaseManager.submitRelationshipOverride(RelationshipOverride(
+                                id = "${user.id}_${target.id}",
+                                observerId = user.id,
+                                observerName = user.name,
+                                targetId = target.id,
+                                targetName = target.name,
+                                relationship = rel
+                            ))
+                        }
+                        currentScreen = Screen.ProfileList
+                    }}
                 )
             }
         }
@@ -575,6 +629,20 @@ fun DashboardScreen(
         },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
+                val totalUnread = channels.sumOf { it.unreadCount[user.id] ?: 0 }
+                FloatingActionButton(
+                    onClick = onNavigateToMessages,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    if (totalUnread > 0) {
+                        BadgedBox(badge = { Badge { Text(totalUnread.toString()) } }) {
+                            Icon(Icons.Default.Email, "Messages")
+                        }
+                    } else {
+                        Icon(Icons.Default.Email, "Messages")
+                    }
+                }
                 FloatingActionButton(
                     onClick = onNavigateToDiscussions,
                     containerColor = MaterialTheme.colorScheme.tertiaryContainer,
@@ -589,31 +657,15 @@ fun DashboardScreen(
                 ) {
                     Icon(Icons.Default.Collections, "Gallery")
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val totalUnread = channels.sumOf { it.unreadCount[user.id] ?: 0 }
-                    FloatingActionButton(
-                        onClick = onNavigateToMessages,
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    ) {
-                        if (totalUnread > 0) {
-                            BadgedBox(badge = { Badge { Text(totalUnread.toString()) } }) {
-                                Icon(Icons.Default.Email, "Messages")
-                            }
-                        } else {
-                            Icon(Icons.Default.Email, "Messages")
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    FloatingActionButton(onClick = onNavigateToProfiles) {
-                        Icon(Icons.Default.Person, "Profiles")
-                    }
+                FloatingActionButton(onClick = onNavigateToProfiles) {
+                    Icon(Icons.Default.Person, "Profiles")
                 }
             }
         }
     ) { padding ->
         LazyColumn(
             modifier = Modifier.padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 280.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 320.dp)
         ) {
             item {
                 Card(
@@ -627,9 +679,14 @@ fun DashboardScreen(
                             if (!user.photoUrl.isNullOrEmpty()) {
                                 AsyncImage(
                                     model = user.photoUrl,
-                                    contentDescription = null,
+                                    contentDescription = "Profile Photo",
                                     modifier = Modifier.size(64.dp).clip(CircleShape),
-                                    contentScale = ContentScale.Crop
+                                    contentScale = ContentScale.Crop,
+                                    placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                                    error = painterResource(id = android.R.drawable.ic_menu_report_image),
+                                    onError = { state ->
+                                        android.util.Log.e("CircleBirthdays", "Dashboard image load failed: ${state.result.throwable.message}")
+                                    }
                                 )
                             } else {
                                 Box(
@@ -688,6 +745,33 @@ fun DashboardScreen(
                         if (!user.marriageDate.isNullOrEmpty()) ProfileField("Marriage Date", user.marriageDate)
                         if (!user.bereavementDate.isNullOrEmpty()) ProfileField("Bereavement Date", user.bereavementDate)
                         if (user.immediateFamily.isNotBlank()) ProfileField("Family", user.immediateFamily)
+
+                        if (!user.facebookUrl.isNullOrEmpty() || !user.instagramUrl.isNullOrEmpty() || !user.youtubeUrl.isNullOrEmpty() || user.phoneNumber.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                val context = LocalContext.current
+                                if (user.phoneNumber.isNotBlank()) {
+                                    IconButton(onClick = { safeOpenUri(context, "https://wa.me/${user.phoneNumber.filter { it.isDigit() }}") }) {
+                                        Icon(painter = painterResource(id = R.drawable.ic_whatsapp), contentDescription = "WhatsApp", tint = Color(0xFF25D366))
+                                    }
+                                }
+                                if (!user.facebookUrl.isNullOrEmpty()) {
+                                    IconButton(onClick = { safeOpenUri(context, user.facebookUrl) }) {
+                                        Icon(painter = painterResource(id = R.drawable.ic_facebook), contentDescription = "Facebook", tint = Color(0xFF1877F2))
+                                    }
+                                }
+                                if (!user.instagramUrl.isNullOrEmpty()) {
+                                    IconButton(onClick = { safeOpenUri(context, user.instagramUrl) }) {
+                                        Icon(painter = painterResource(id = R.drawable.ic_instagram), contentDescription = "Instagram", tint = Color(0xFFE4405F))
+                                    }
+                                }
+                                if (!user.youtubeUrl.isNullOrEmpty()) {
+                                    IconButton(onClick = { safeOpenUri(context, user.youtubeUrl) }) {
+                                        Icon(painter = painterResource(id = R.drawable.ic_youtube), contentDescription = "YouTube", tint = Color(0xFFFF0000))
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
@@ -705,6 +789,45 @@ fun DashboardScreen(
                 
                 ListItem(
                     headlineContent = { Text("Birthday: ${it.name}${if (age != null) " ($age)" else ""}") },
+                    supportingContent = {
+                        if (!it.facebookUrl.isNullOrEmpty() || !it.instagramUrl.isNullOrEmpty() || !it.youtubeUrl.isNullOrEmpty() || it.phoneNumber.isNotBlank()) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                                val ctx = LocalContext.current
+                                if (it.phoneNumber.isNotBlank()) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_whatsapp),
+                                        contentDescription = "WhatsApp",
+                                        tint = Color(0xFF25D366),
+                                        modifier = Modifier.size(18.dp).clickable { safeOpenUri(ctx, "https://wa.me/${it.phoneNumber.filter { it.isDigit() }}") }
+                                    )
+                                }
+                                if (!it.facebookUrl.isNullOrEmpty()) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_facebook),
+                                        contentDescription = "Facebook",
+                                        tint = Color(0xFF1877F2),
+                                        modifier = Modifier.size(18.dp).clickable { safeOpenUri(ctx, it.facebookUrl) }
+                                    )
+                                }
+                                if (!it.instagramUrl.isNullOrEmpty()) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_instagram),
+                                        contentDescription = "Instagram",
+                                        tint = Color(0xFFE4405F),
+                                        modifier = Modifier.size(18.dp).clickable { safeOpenUri(ctx, it.instagramUrl) }
+                                    )
+                                }
+                                if (!it.youtubeUrl.isNullOrEmpty()) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_youtube),
+                                        contentDescription = "YouTube",
+                                        tint = Color(0xFFFF0000),
+                                        modifier = Modifier.size(18.dp).clickable { safeOpenUri(ctx, it.youtubeUrl) }
+                                    )
+                                }
+                            }
+                        }
+                    },
                     leadingContent = { EventAvatar(it.photoUrl, it.name) },
                     trailingContent = {
                         if (it.phoneNumber.isNotBlank()) {
@@ -795,12 +918,16 @@ fun DashboardScreen(
 
 @Composable
 fun EventAvatar(photoUrl: String?, name: String = "") {
-    if (!photoUrl.isNullOrEmpty()) {
+    if (!photoUrl.isNullOrEmpty() && photoUrl.startsWith("http")) {
         AsyncImage(
             model = photoUrl,
             contentDescription = null,
             modifier = Modifier.size(40.dp).clip(CircleShape),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            error = painterResource(id = android.R.drawable.ic_menu_report_image),
+            onError = { state ->
+                android.util.Log.e("CircleBirthdays", "EventAvatar load failed for $name: ${state.result.throwable.message}")
+            }
         )
     } else {
         Box(
@@ -874,7 +1001,9 @@ fun DiscussionsScreen(
                                     .fillMaxWidth()
                                     .heightIn(max = 300.dp)
                                     .clip(RoundedCornerShape(8.dp)),
-                                contentScale = ContentScale.Fit
+                                contentScale = ContentScale.Fit,
+                                placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                                error = painterResource(id = android.R.drawable.ic_menu_report_image)
                             )
                             Spacer(Modifier.height(8.dp))
                         }
@@ -936,7 +1065,17 @@ fun DiscussionsScreen(
                     Text("By ${disc.userName}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
                     Spacer(Modifier.height(8.dp))
                     if (disc.type == "IMAGE") {
-                        AsyncImage(model = disc.content, contentDescription = null, modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp).clip(RoundedCornerShape(8.dp)), contentScale = ContentScale.Fit)
+                        AsyncImage(
+                            model = disc.content,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp).clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Fit,
+                            placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                            error = painterResource(id = android.R.drawable.ic_menu_report_image),
+                            onError = { state ->
+                                android.util.Log.e("CircleBirthdays", "Discussion image load failed: ${state.result.throwable.message}")
+                            }
+                        )
                     } else {
                         Text(disc.content)
                     }
@@ -999,7 +1138,7 @@ fun DiscussionsScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 280.dp)
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 320.dp)
         ) {
             items(discussions) { disc ->
                 Card(
@@ -1050,10 +1189,13 @@ fun ProfileListScreen(
     onImportCsv: () -> Unit,
     onApprove: (Member) -> Unit,
     onClearAll: () -> Unit,
-    onChat: (Member) -> Unit
+    onChat: (Member) -> Unit,
+    overrides: List<RelationshipOverride> = emptyList(),
+    onApproveOverride: (RelationshipOverride) -> Unit = {}
 ) {
     val canEditAll = currentUser.isAdmin || currentUser.isEditor
     var showPending by remember { mutableStateOf(false) }
+    var showOverrides by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     
     val filteredMembers = (if (showPending) {
@@ -1073,7 +1215,11 @@ fun ProfileListScreen(
                 TopAppBar(
                     title = { 
                         Column {
-                            Text(if (showPending) "Pending Approvals" else "Profiles")
+                            Text(when {
+                                showPending -> "Pending Approvals"
+                                showOverrides -> "Relationship Requests"
+                                else -> "Profiles"
+                            })
                             if (canEditAll) {
                                 Text("Admin Mode", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                             }
@@ -1085,8 +1231,21 @@ fun ProfileListScreen(
                         if (currentUser.isAdmin) {
                             if (pendingMembers.isNotEmpty()) {
                                 BadgedBox(badge = { Badge { Text(pendingMembers.size.toString()) } }) {
-                                    IconButton(onClick = { showPending = !showPending }) {
+                                    IconButton(onClick = { 
+                                        showPending = !showPending 
+                                        showOverrides = false
+                                    }) {
                                         Icon(if (showPending) Icons.Default.Person else Icons.Default.Check, "")
+                                    }
+                                }
+                            }
+                            if (overrides.isNotEmpty()) {
+                                BadgedBox(badge = { Badge { Text(overrides.size.toString()) } }) {
+                                    IconButton(onClick = { 
+                                        showOverrides = !showOverrides
+                                        showPending = false
+                                    }) {
+                                        Icon(if (showOverrides) Icons.Default.People else Icons.Default.SettingsSuggest, "")
                                     }
                                 }
                             }
@@ -1112,7 +1271,7 @@ fun ProfileListScreen(
                         }
                     }
                 )
-                if (!showPending) {
+                if (!showPending && !showOverrides) {
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
@@ -1129,21 +1288,43 @@ fun ProfileListScreen(
                 }
             }
         },
-        floatingActionButton = { if (canEditAll && !showPending) FloatingActionButton(onClick = onAdd) { Icon(Icons.Default.Add, "") } }
+        floatingActionButton = { if (canEditAll && !showPending && !showOverrides) FloatingActionButton(onClick = onAdd) { Icon(Icons.Default.Add, "") } }
     ) { padding ->
-        LazyColumn(modifier = Modifier.padding(padding)) {
-            items(filteredMembers) { member ->
+        if (showOverrides && currentUser.isAdmin) {
+            LazyColumn(modifier = Modifier.padding(padding)) {
+                items(overrides) { override ->
+                    ListItem(
+                        headlineContent = { Text("${override.observerName} ➔ ${override.targetName}") },
+                        supportingContent = { Text("Requested Label: ${override.relationship}") },
+                        trailingContent = {
+                            IconButton(onClick = { onApproveOverride(override) }) {
+                                Icon(Icons.Default.Check, "Approve", tint = Color.Green)
+                            }
+                        }
+                    )
+                }
+            }
+        } else {
+            LazyColumn(modifier = Modifier.padding(padding)) {
+                items(filteredMembers) { member ->
                 ListItem(
                     headlineContent = {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                member.name,
-                                modifier = Modifier.weight(1f, fill = false),
-                                style = MaterialTheme.typography.titleMedium
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    member.name,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                if (showPending) {
+                                    member.requestedByName?.let { requester ->
+                                        Text("Requested by: $requester", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                                    }
+                                    Text("(Pending Approval)", style = MaterialTheme.typography.bodySmall, color = Color.Red)
+                                }
+                            }
                             if (!member.relationship.isNullOrEmpty()) {
                                 Surface(
                                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -1202,6 +1383,46 @@ fun ProfileListScreen(
                             if (!member.bereavementDate.isNullOrEmpty()) {
                                 Text("Bereavement: ${member.bereavementDate}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                             }
+                            if (!member.facebookUrl.isNullOrEmpty() || !member.instagramUrl.isNullOrEmpty() || !member.youtubeUrl.isNullOrEmpty() || member.phoneNumber.isNotBlank()) {
+                                Row(
+                                    modifier = Modifier.padding(top = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    val context = LocalContext.current
+                                    if (member.phoneNumber.isNotBlank()) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_whatsapp),
+                                            contentDescription = "WhatsApp",
+                                            tint = Color(0xFF25D366),
+                                            modifier = Modifier.size(20.dp).clickable { safeOpenUri(context, "https://wa.me/${member.phoneNumber.filter { it.isDigit() }}") }
+                                        )
+                                    }
+                                    if (!member.facebookUrl.isNullOrEmpty()) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_facebook),
+                                            contentDescription = "Facebook",
+                                            tint = Color(0xFF1877F2),
+                                            modifier = Modifier.size(20.dp).clickable { safeOpenUri(context, member.facebookUrl) }
+                                        )
+                                    }
+                                    if (!member.instagramUrl.isNullOrEmpty()) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_instagram),
+                                            contentDescription = "Instagram",
+                                            tint = Color(0xFFE4405F),
+                                            modifier = Modifier.size(20.dp).clickable { safeOpenUri(context, member.instagramUrl) }
+                                        )
+                                    }
+                                    if (!member.youtubeUrl.isNullOrEmpty()) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_youtube),
+                                            contentDescription = "YouTube",
+                                            tint = Color(0xFFFF0000),
+                                            modifier = Modifier.size(20.dp).clickable { safeOpenUri(context, member.youtubeUrl) }
+                                        )
+                                    }
+                                }
+                            }
                             if (canEditAll && member.lastLoggedIn != null) {
                                 val lastLoginStr = java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault())
                                     .format(java.util.Date(member.lastLoggedIn))
@@ -1210,12 +1431,16 @@ fun ProfileListScreen(
                         }
                     },
                     leadingContent = {
-                        if (!member.photoUrl.isNullOrEmpty()) {
+                        if (!member.photoUrl.isNullOrEmpty() && member.photoUrl.startsWith("http")) {
                             AsyncImage(
                                 model = member.photoUrl,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp).clip(CircleShape),
-                                contentScale = ContentScale.Crop
+                                contentScale = ContentScale.Crop,
+                                error = painterResource(id = android.R.drawable.ic_menu_report_image),
+                                onError = { state ->
+                                    android.util.Log.e("CircleBirthdays", "ProfileList image load failed for ${member.name}: ${state.result.throwable.message}")
+                                }
                             )
                         } else {
                             Box(
@@ -1250,12 +1475,20 @@ fun ProfileListScreen(
                 )
             }
         }
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditProfileScreen(member: Member?, currentUser: Member, onSave: (Member, Uri?) -> Unit, onCancel: () -> Unit, onHome: () -> Unit) {
+fun EditProfileScreen(
+    member: Member?,
+    currentUser: Member,
+    onSave: (Member, Uri?) -> Unit,
+    onCancel: () -> Unit,
+    onHome: () -> Unit,
+    onRequestOverride: (String) -> Unit = {}
+) {
     val isSelf = member?.id == currentUser.id
     val isAdminOrEditor = currentUser.isAdmin || currentUser.isEditor
     val canEditAll = isAdminOrEditor || member == null
@@ -1289,6 +1522,9 @@ fun EditProfileScreen(member: Member?, currentUser: Member, onSave: (Member, Uri
     var bereavementDate by remember(member) { mutableStateOf(member?.bereavementDate ?: "") }
     var photoUrl by remember(member) { mutableStateOf(member?.photoUrl ?: "") }
     var relationship by remember(member) { mutableStateOf(member?.relationship ?: "") }
+    var facebookUrl by remember(member) { mutableStateOf(member?.facebookUrl ?: "") }
+    var instagramUrl by remember(member) { mutableStateOf(member?.instagramUrl ?: "") }
+    var youtubeUrl by remember(member) { mutableStateOf(member?.youtubeUrl ?: "") }
 
     val isSpouse = familyId.trim().endsWith("0")
     val canEditSpouseParents = (canEditAll || isSelf) && isSpouse
@@ -1343,7 +1579,12 @@ fun EditProfileScreen(member: Member?, currentUser: Member, onSave: (Member, Uri
                             model = photoUrl,
                             contentDescription = "Profile Photo",
                             modifier = Modifier.fillMaxSize().clip(CircleShape),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
+                            placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                            error = painterResource(id = android.R.drawable.ic_menu_report_image),
+                            onError = { state ->
+                                android.util.Log.e("CircleBirthdays", "EditProfile preview load failed: ${state.result.throwable.message}")
+                            }
                         )
                         if (canEditPhoto) {
                             IconButton(
@@ -1442,35 +1683,51 @@ fun EditProfileScreen(member: Member?, currentUser: Member, onSave: (Member, Uri
             
             val relationships = listOf("Dadaji", "Bade Dadaji", "Chote Dadaji", "Dadi", "Badi Dadi", "Choti Dadi", "Nana", "Bade Nana", "Chote Nana", "Nani", "Badi Nani", "Choti Nani", "Papa", "Mummy", "Bade Papa", "Badi Amma", "Chachaji", "Chachiji", "Bade Mamaji", "Chote Mamaji", "Badi Mamiji", "Choti Mamiji", "Bhaiya", "Bhabhi", "Didi", "Jijaji", "Bade Mausa", "Chote Mausa", "Badi Mausi", "Choti Mausi", "Bade Fufa", "Chote Fufa", "Badi Bua", "Choti Bua", "Bhatija", "Bhatiji", "Bhanja", "Bhanji", "Beta", "Beti", "Pota", "Poti", "Nati", "Natin", "Bahu", "Damand", "Sasurji", "Saasuma", "Devar", "Jeth", "Nanad", "Saala", "Saali")
             var relExpanded by remember { mutableStateOf(false) }
-            val canEditRel = currentUser.phoneNumber == "9999999999"
-            ExposedDropdownMenuBox(
-                expanded = if (canEditRel) relExpanded else false,
-                onExpandedChange = { if (canEditRel) relExpanded = !relExpanded },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = relationship,
-                    onValueChange = { relationship = it },
-                    label = { Text("Relationship (e.g. Dadaji, Bhaiya)") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
-                    trailingIcon = { if (canEditRel) ExposedDropdownMenuDefaults.TrailingIcon(expanded = relExpanded) },
-                    enabled = canEditRel
-                )
-                if (canEditRel) {
-                    ExposedDropdownMenu(
-                        expanded = relExpanded,
-                        onDismissRequest = { relExpanded = false }
-                    ) {
-                        relationships.forEach { rel ->
-                            DropdownMenuItem(
-                                text = { Text(rel) },
-                                onClick = {
-                                    relationship = rel
-                                    relExpanded = false
-                                }
-                            )
+            val canEditRel = currentUser.phoneNumber == "9999999999" || isAdminOrEditor
+            
+            Column {
+                ExposedDropdownMenuBox(
+                    expanded = if (canEditRel || (!isAdminOrEditor && member != null)) relExpanded else false,
+                    onExpandedChange = { if (canEditRel || (!isAdminOrEditor && member != null)) relExpanded = !relExpanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = relationship,
+                        onValueChange = { if (canEditRel) relationship = it },
+                        label = { Text("Relationship (e.g. Dadaji, Bhaiya)") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                        trailingIcon = { if (canEditRel || (!isAdminOrEditor && member != null)) ExposedDropdownMenuDefaults.TrailingIcon(expanded = relExpanded) },
+                        enabled = canEditRel || (!isAdminOrEditor && member != null),
+                        readOnly = !canEditRel
+                    )
+                    if (canEditRel || (!isAdminOrEditor && member != null)) {
+                        ExposedDropdownMenu(
+                            expanded = relExpanded,
+                            onDismissRequest = { relExpanded = false }
+                        ) {
+                            relationships.forEach { rel ->
+                                DropdownMenuItem(
+                                    text = { Text(rel) },
+                                    onClick = {
+                                        if (canEditRel) {
+                                            relationship = rel
+                                        } else if (member != null) {
+                                            onRequestOverride(rel)
+                                        }
+                                        relExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
+                }
+                if (!isAdminOrEditor && member != null) {
+                    Text(
+                        "Request a relationship update if the auto-detected label is incorrect.",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(top = 4.dp),
+                        color = MaterialTheme.colorScheme.secondary
+                    )
                 }
             }
 
@@ -1501,6 +1758,94 @@ fun EditProfileScreen(member: Member?, currentUser: Member, onSave: (Member, Uri
             
             OutlinedTextField(value = marriageDate, onValueChange = { marriageDate = it }, label = { Text("Marriage Date") }, modifier = Modifier.fillMaxWidth(), enabled = canEditFixed)
             OutlinedTextField(value = immediateFamily, onValueChange = { immediateFamily = it }, label = { Text("Immediate Family (e.g. Children names)") }, modifier = Modifier.fillMaxWidth(), enabled = canEditFixed)
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Social Media Links", style = MaterialTheme.typography.titleSmall)
+            
+            // Always show clickable icons if links exist
+            if (!facebookUrl.isNullOrBlank() || !instagramUrl.isNullOrBlank() || !youtubeUrl.isNullOrBlank() || phone.isNotBlank()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    val context = LocalContext.current
+                    if (phone.isNotBlank()) {
+                        IconButton(
+                            onClick = { safeOpenUri(context, "https://wa.me/${phone.filter { it.isDigit() }}") },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_whatsapp),
+                                contentDescription = "WhatsApp",
+                                tint = Color(0xFF25D366),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                    if (!facebookUrl.isNullOrBlank()) {
+                        IconButton(
+                            onClick = { safeOpenUri(context, facebookUrl) },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_facebook), 
+                                contentDescription = "Facebook", 
+                                tint = Color(0xFF1877F2),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                    if (!instagramUrl.isNullOrBlank()) {
+                        IconButton(
+                            onClick = { safeOpenUri(context, instagramUrl) },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_instagram), 
+                                contentDescription = "Instagram", 
+                                tint = Color(0xFFE4405F),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                    if (!youtubeUrl.isNullOrBlank()) {
+                        IconButton(
+                            onClick = { safeOpenUri(context, youtubeUrl) },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_youtube),
+                                contentDescription = "YouTube", 
+                                tint = Color(0xFFFF0000),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (isSelf || canEditAll) {
+                OutlinedTextField(
+                    value = facebookUrl, 
+                    onValueChange = { facebookUrl = it }, 
+                    label = { Text("Facebook URL") }, 
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = instagramUrl, 
+                    onValueChange = { instagramUrl = it }, 
+                    label = { Text("Instagram URL") }, 
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = youtubeUrl, 
+                    onValueChange = { youtubeUrl = it }, 
+                    label = { Text("YouTube URL") }, 
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else if (facebookUrl.isNullOrBlank() && instagramUrl.isNullOrBlank() && youtubeUrl.isNullOrBlank()) {
+                Text("No social media links provided.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+            }
             
             if (currentUser.isAdmin) {
                 OutlinedTextField(value = bereavementDate, onValueChange = { bereavementDate = it }, label = { Text("Bereavement Date (Admin Only)") }, modifier = Modifier.fillMaxWidth(), enabled = isAdminOrEditor)
@@ -1536,7 +1881,10 @@ fun EditProfileScreen(member: Member?, currentUser: Member, onSave: (Member, Uri
                             relationship = relationship,
                             isAdmin = member?.isAdmin ?: false,
                             isEditor = isEditor,
-                            password = member?.password
+                            password = member?.password,
+                            facebookUrl = facebookUrl,
+                            instagramUrl = instagramUrl,
+                            youtubeUrl = youtubeUrl
                         ), selectedUri)
                     }) { Text(if (isAdminOrEditor || member?.id == currentUser.id) "Save" else "Submit for Approval") }
                 }
@@ -1627,7 +1975,12 @@ fun GalleryScreen(
                         model = memory.imageUrl,
                         contentDescription = null,
                         modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp).clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Fit,
+                        placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                        error = painterResource(id = android.R.drawable.ic_menu_report_image),
+                        onError = { state ->
+                            android.util.Log.e("CircleBirthdays", "Gallery detail image load failed: ${state.result.throwable.message}")
+                        }
                     )
                     Text(memory.caption, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
                     
@@ -1736,7 +2089,12 @@ fun GalleryScreen(
                                     model = memory.imageUrl,
                                     contentDescription = null,
                                     modifier = Modifier.fillMaxWidth().height(150.dp),
-                                    contentScale = ContentScale.Fit
+                                    contentScale = ContentScale.Fit,
+                                    placeholder = painterResource(id = android.R.drawable.ic_menu_gallery),
+                                    error = painterResource(id = android.R.drawable.ic_menu_report_image),
+                                    onError = { state ->
+                                        android.util.Log.e("CircleBirthdays", "Gallery grid image load failed: ${state.result.throwable.message}")
+                                    }
                                 )
                                 if (memory.status == "PENDING") {
                                     Surface(
@@ -1803,7 +2161,7 @@ fun ProfileField(label: String, value: String) {
     }
 }
 
-private fun isToday(dateStr: String?): Boolean {
+fun isToday(dateStr: String?): Boolean {
     if (dateStr.isNullOrBlank()) return false
     val today = LocalDate.now()
     return try {

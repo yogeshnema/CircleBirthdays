@@ -95,7 +95,8 @@ object FamilyUtils {
             if (children.isNotEmpty()) append("Children: ${children.joinToString(", ")}.")
         }.trim()
 
-        val inferredRel = if (currentUser != null) getRelationship(member, currentUser, allMembers) else null
+        val inferredRel = (if (currentUser != null) member.manualRelationships[currentUser.id] else null)
+            ?: if (currentUser != null) getRelationship(member, currentUser, allMembers) else null
 
         return member.copy(
             spouseName = spouseName ?: member.spouseName,
