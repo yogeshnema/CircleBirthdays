@@ -45,7 +45,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val channelId = "family_circle_notifications"
+        val channelId = "purawale_notifications"
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
@@ -60,7 +60,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,
-                "Family Circle Notifications",
+                "Purawale - Hum aur Humare Notifications",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Notifications for family updates and messages"

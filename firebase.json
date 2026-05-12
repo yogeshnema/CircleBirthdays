@@ -1,5 +1,9 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
+    "site": "circlebirthdays",
     "public": "public",
     "ignore": [
       "firebase.json",

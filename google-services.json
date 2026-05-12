@@ -12,7 +12,20 @@
           "package_name": "com.example.circlebirthdays"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "360638452983-lropgpn4dpp9okl9fgt66k72njhhfdio.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.circlebirthdays",
+            "certificate_hash": "70df4c7d93f79edefbe2d854663807a8d0826fce"
+          }
+        },
+        {
+          "client_id": "360638452983-lk9jcbu542rer7bgeci30d3kfc1naj7k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAhdvWtQpVKrRrslgSM_Q_xDX9U_bhZhNY"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "360638452983-lk9jcbu542rer7bgeci30d3kfc1naj7k.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "360638452983-it42k1gt5cprp055nci6t8gglusblsrm.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "Yogesh-N.CircleBirthdays"
+              }
+            }
+          ]
         }
       }
     }

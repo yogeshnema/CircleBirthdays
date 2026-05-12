@@ -3,260 +3,949 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CircleBirthdays | Family Portal</title>
+    <title>Purawale - Hum aur Humare</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet.js for Family Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        .hidden { display: none; }
-        .modal-bg { background-color: rgba(0,0,0,0.5); }
-        .tab-active { border-bottom: 3px solid #4f46e5; color: #4f46e5; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        html, body { height: 100%; margin: 0; background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .bg-fixed-branding {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('background.png');
+            background-size: cover;
+            background-position: center;
+            opacity: 0.1;
+            z-index: 0;
+            pointer-events: none;
+        }
+        #hero, #dashboard { position: relative; z-index: 10; }
+        nav { background: rgba(255, 255, 255, 0.7) !important; backdrop-filter: blur(12px); }
+        .modal-bg { background-color: rgba(15, 23, 42, 0.8); }
+        .active-tab { background-color: #4f46e5; color: white; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.2); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Family Tree Custom Styles */
+        #tree-viewport { overflow: auto; cursor: grab; background-color: #f1f5f9; position: relative; }
+        #tree-viewport:active { cursor: grabbing; }
+        #tree-wrapper { transform-origin: top left; transition: transform 0.2s ease-out; }
+        .tree-node { width: 140px; }
+        .connector-h { height: 2px; background: #cbd5e1; position: absolute; }
+        .connector-v { width: 2px; background: #cbd5e1; position: absolute; }
     </style>
 </head>
-<body class="bg-slate-50 font-sans text-slate-900">
+<body class="text-slate-900">
+    <div class="bg-fixed-branding"></div>
 
-    <!-- Navigation -->
-    <nav class="bg-white shadow-sm py-4 px-6 flex justify-between items-center sticky top-0 z-50">
-        <h1 class="text-xl font-bold text-indigo-700">CircleBirthdays</h1>
-        <div id="nav-actions">
-            <button onclick="openModal()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-indigo-700 transition shadow-md">Family Login</button>
-        </div>
-        <div id="user-profile" class="hidden flex items-center gap-4">
-            <div class="text-right hidden sm:block">
-                <p id="user-name" class="font-bold text-slate-700 text-sm leading-none"></p>
-                <p class="text-[10px] text-slate-400">Family Member</p>
+    <!-- Auth Hero -->
+    <div id="hero" class="min-h-screen flex items-center justify-center p-6">
+        <div class="max-w-md w-full text-center">
+            <div class="mb-10 inline-block p-4 bg-white rounded-[2.5rem] shadow-xl shadow-indigo-100">
+                <i class="fas fa-users-rays text-5xl text-indigo-600"></i>
             </div>
-            <button onclick="logout()" class="bg-slate-100 text-slate-600 p-2 rounded-full hover:bg-red-50 hover:text-red-600 transition">
-                <i class="fas fa-sign-out-alt"></i>
+            <h1 class="text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">Purawale - Hum aur Humare</h1>
+            <p class="text-slate-500 mb-10 text-lg">Connecting generations, celebrating birthdays, and preserving our family heritage.</p>
+            <button onclick="openModal()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-xl hover:bg-indigo-700 transition transform hover:-translate-y-1 shadow-2xl shadow-indigo-200">
+                Sign In to Portal
             </button>
         </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <header id="hero" class="bg-gradient-to-br from-indigo-600 via-blue-600 to-indigo-800 text-white py-20 px-6 text-center">
-        <div class="max-w-4xl mx-auto">
-            <h1 class="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight">Our Family, <span class="text-blue-200">Connected.</span></h1>
-            <p class="text-lg md:text-xl opacity-90 mb-10 max-w-2xl mx-auto leading-relaxed">The digital home for the Nema family. Birthdays, relationships, discussions, and memories - all in one place.</p>
-            <div class="flex flex-col sm:flex-row justify-center gap-4">
-                 <a href="app-debug.apk" download class="bg-white text-indigo-700 px-8 py-4 rounded-2xl font-bold hover:shadow-xl transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
-                    <i class="fab fa-google-play text-xl"></i> Download APK for Android
-                 </a>
-                 <button onclick="openModal()" class="bg-indigo-500 bg-opacity-20 backdrop-blur-md border border-indigo-400 text-white px-8 py-4 rounded-2xl font-bold hover:bg-opacity-30 transition">
-                    Access Web Portal
-                 </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Dashboard Section -->
-    <main id="dashboard" class="hidden max-w-6xl mx-auto py-10 px-4 md:px-6">
-
-        <!-- Tabs -->
-        <div class="flex border-b border-slate-200 mb-8 overflow-x-auto scrollbar-hide gap-2">
-            <button onclick="switchTab('directory')" id="tab-directory" class="px-6 py-4 font-bold text-slate-400 hover:text-indigo-600 transition tab-active whitespace-nowrap">
-                <i class="fas fa-users mr-2"></i> Directory
-            </button>
-            <button onclick="switchTab('tree')" id="tab-tree" class="px-6 py-4 font-bold text-slate-400 hover:text-indigo-600 transition whitespace-nowrap">
-                <i class="fas fa-sitemap mr-2"></i> Family Tree
-            </button>
-            <button onclick="switchTab('discussions')" id="tab-discussions" class="px-6 py-4 font-bold text-slate-400 hover:text-indigo-600 transition whitespace-nowrap">
-                <i class="fas fa-comments mr-2"></i> Discussions
-            </button>
-            <button onclick="switchTab('gallery')" id="tab-gallery" class="px-6 py-4 font-bold text-slate-400 hover:text-indigo-600 transition whitespace-nowrap">
-                <i class="fas fa-images mr-2"></i> Memory Gallery
-            </button>
-        </div>
-
-        <!-- Directory Content -->
-        <section id="content-directory">
-            <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                <h2 class="text-2xl font-bold text-slate-800">Family Members</h2>
-                <div class="relative w-full md:w-80">
-                    <input type="text" id="search" placeholder="Search by name or relationship..." class="pl-12 pr-4 py-3 border border-slate-200 rounded-2xl w-full focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none transition">
-                    <i class="fas fa-search absolute left-4 top-4 text-slate-400"></i>
-                </div>
-            </div>
-            <div id="member-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-        </section>
-
-        <!-- Tree Content -->
-        <section id="content-tree" class="hidden relative">
-            <!-- Zoom Controls -->
-            <div class="absolute top-4 right-4 z-10 flex flex-col gap-2">
-                <button onclick="zoomTree(1.1)" class="w-10 h-10 bg-white shadow-md rounded-full flex items-center justify-center text-slate-600 hover:text-indigo-600 transition">
-                    <i class="fas fa-plus"></i>
-                </button>
-                <button onclick="zoomTree(0.9)" class="w-10 h-10 bg-white shadow-md rounded-full flex items-center justify-center text-slate-600 hover:text-indigo-600 transition">
-                    <i class="fas fa-minus"></i>
-                </button>
-                <button onclick="resetZoom()" class="w-10 h-10 bg-white shadow-md rounded-full flex items-center justify-center text-slate-600 hover:text-indigo-600 transition">
-                    <i class="fas fa-sync-alt text-xs"></i>
-                </button>
-                <button onclick="locateMe()" title="Locate Me" class="w-10 h-10 bg-indigo-600 shadow-md rounded-full flex items-center justify-center text-white hover:bg-indigo-700 transition">
-                    <i class="fas fa-location-crosshairs"></i>
-                </button>
-            </div>
-
-            <div class="overflow-auto p-10 min-h-[600px] border border-slate-100 rounded-[3rem] bg-white/50 backdrop-blur-sm shadow-inner cursor-grab active:cursor-grabbing" id="tree-viewport">
-                <div id="tree-wrapper" class="inline-block origin-top transition-transform duration-300">
-                    <div id="family-tree-container" class="inline-block"></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Discussions Content -->
-        <section id="content-discussions" class="hidden">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-bold text-slate-800">Latest Discussions</h2>
-                <p class="text-sm text-slate-400">Post new ones via the app</p>
-            </div>
-            <div id="discussion-list" class="space-y-6 max-w-3xl mx-auto"></div>
-        </section>
-
-        <!-- Gallery Content -->
-        <section id="content-gallery" class="hidden">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-bold text-slate-800">Family Memories</h2>
-                <p class="text-sm text-slate-400">Shared by family members</p>
-            </div>
-            <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
-        </section>
-
-    </main>
+    </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[100] px-4 backdrop-blur-sm">
-        <div class="bg-white rounded-[2rem] p-10 max-w-md w-full shadow-2xl relative">
-            <button onclick="closeModal()" class="absolute top-6 right-6 text-slate-300 hover:text-slate-600 transition">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
-                    <i class="fas fa-lock"></i>
+    <div id="login-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-50 p-6 backdrop-blur-sm">
+        <div class="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl">
+            <h2 class="text-3xl font-extrabold mb-2 text-slate-800">Welcome Back</h2>
+            <p class="text-slate-400 mb-8 font-medium">Please enter your family credentials</p>
+            <div class="space-y-4">
+                <div class="relative">
+                    <i class="fas fa-phone absolute left-5 top-5 text-slate-300"></i>
+                    <input type="text" id="login-phone" placeholder="Phone Number" class="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium">
                 </div>
-                <h2 class="text-3xl font-extrabold text-slate-800">Family Portal</h2>
-                <p class="text-slate-500 mt-2">Sign in to see our private family data.</p>
+                <div class="relative">
+                    <i class="fas fa-lock absolute left-5 top-5 text-slate-300"></i>
+                    <input type="password" id="login-pwd" placeholder="Portal Password" class="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium">
+                </div>
+                <div id="login-error" class="hidden text-red-500 text-sm font-bold px-2"></div>
+                <button id="login-btn" onclick="handleLogin()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition mt-4 shadow-lg shadow-indigo-100">
+                    Enter Portal
+                </button>
+                <button onclick="closeModal()" class="w-full text-slate-400 py-2 font-bold text-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="hidden min-h-screen flex flex-col">
+        <!-- Navigation -->
+        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-100">
+            <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-indigo-600 rounded-xl text-white">
+                        <i class="fas fa-users-rays"></i>
+                    </div>
+                    <span class="font-extrabold text-xl tracking-tight text-slate-800">Purawale - Hum aur Humare</span>
+                </div>
+                <div id="nav-actions" class="flex gap-8 items-center font-bold text-sm text-slate-500">
+                    <a href="#directory" class="hover:text-indigo-600 transition">Directory</a>
+                    <a href="#tree" class="hover:text-indigo-600 transition">Family Tree</a>
+                    <a href="#discussions" class="hover:text-indigo-600 transition">Discussions</a>
+                </div>
+                <div id="user-profile" class="hidden flex items-center gap-4">
+                    <div class="text-right hidden md:block">
+                        <p id="user-name" class="font-bold text-slate-800 text-sm"></p>
+                        <p id="user-role" class="text-[10px] text-indigo-500 font-black uppercase tracking-widest"></p>
+                    </div>
+                    <button onclick="logout()" class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition border border-slate-100">
+                        <i class="fas fa-power-off"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Dynamic Tabs -->
+        <div class="bg-white border-b border-slate-100 overflow-x-auto scrollbar-hide">
+            <div class="max-w-7xl mx-auto px-6 flex">
+                <button onclick="switchTab('directory')" id="tab-directory" class="px-6 py-4 font-bold text-sm transition-all active-tab border-b-2 border-transparent">
+                    <i class="fas fa-address-book mr-2"></i> Member Directory
+                </button>
+                <button onclick="switchTab('tree')" id="tab-tree" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                    <i class="fas fa-network-wired mr-2"></i> Interactive Tree
+                </button>
+                <button onclick="switchTab('map')" id="tab-map" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                    <i class="fas fa-map-marked-alt mr-2"></i> Family Map
+                </button>
+                <button onclick="switchTab('discussions')" id="tab-discussions" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                    <i class="fas fa-comments mr-2"></i> Discussions
+                </button>
+                <button onclick="switchTab('messaging')" id="tab-messaging" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                    <i class="fas fa-paper-plane mr-2"></i> Messaging
+                </button>
+                <button onclick="switchTab('gallery')" id="tab-gallery" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                    <i class="fas fa-images mr-2"></i> Gallery
+                </button>
+                <button onclick="switchTab('cookbook')" id="tab-cookbook" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                    <i class="fas fa-utensils mr-2"></i> Cookbook
+                </button>
+                <button onclick="switchTab('traditions')" id="tab-traditions" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                    <i class="fas fa-scroll mr-2"></i> Traditions
+                </button>
+                <button onclick="switchTab('memorylane')" id="tab-memorylane" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                    <i class="fas fa-history mr-2"></i> Memory Lane
+                </button>
+                <button onclick="switchTab('approvals')" id="tab-approvals" class="hidden px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                    <i class="fas fa-user-check mr-2"></i> Approvals
+                </button>
+            </div>
+        </div>
+
+        <main class="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8">
+            <!-- Directory Tab -->
+            <section id="content-directory">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+                    <div>
+                        <h2 class="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Member Directory</h2>
+                        <p class="text-slate-400 font-medium">Find and connect with family members worldwide.</p>
+                    </div>
+                    <div class="relative w-full md:w-96">
+                        <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-300"></i>
+                        <input type="text" id="search" placeholder="Search by name, role, or city..." class="w-full pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+                    </div>
+                </div>
+                <div id="member-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <!-- Cards will be injected here -->
+                </div>
+            </section>
+
+            <!-- Interactive Tree Tab -->
+            <section id="content-tree" class="hidden h-full flex flex-col">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Ancestral Visualization</h2>
+                        <p class="text-sm text-slate-400">Click and drag to explore our family roots.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="jumpToMyNode()" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-100 transition">Find Me</button>
+                        <button onclick="zoomTree(1.2)" class="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-50 transition"><i class="fas fa-plus text-xs"></i></button>
+                        <button onclick="zoomTree(0.8)" class="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-50 transition"><i class="fas fa-minus text-xs"></i></button>
+                        <button onclick="resetZoom()" class="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-50 transition"><i class="fas fa-expand text-xs"></i></button>
+                    </div>
+                </div>
+                <div id="tree-viewport" class="flex-1 rounded-[3rem] border border-slate-100 shadow-inner min-h-[600px] relative">
+                    <div id="tree-wrapper" class="absolute left-0 top-0 p-40">
+                        <!-- Nodes and Connectors injected here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Discussions Tab -->
+            <section id="content-discussions" class="hidden">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-bold text-slate-800">Family Talk</h2>
+                    <button onclick="openDiscussionModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">
+                        Start a Discussion
+                    </button>
+                </div>
+                <div id="discussion-list" class="space-y-6">
+                    <!-- Discussions injected here -->
+                </div>
+            </section>
+
+            <!-- Messaging Content -->
+            <section id="content-messaging" class="hidden">
+                <div class="flex h-[75vh] bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+                    <!-- Channels/Contacts Sidebar -->
+                    <div class="w-80 border-r border-slate-100 flex flex-col">
+                        <div class="p-6 border-b border-slate-100">
+                            <h3 class="font-bold text-slate-800">Messages</h3>
+                        </div>
+                        <div id="channel-list" class="flex-1 overflow-y-auto p-4 space-y-2">
+                            <!-- DM list here -->
+                        </div>
+                    </div>
+                    <!-- Chat Area -->
+                    <div class="flex-1 flex flex-col bg-slate-50/50">
+                        <div id="chat-header" class="h-16 bg-white border-b border-slate-100 flex items-center px-8">
+                            <p class="text-slate-400 italic">Select a family member to start chatting</p>
+                        </div>
+                        <div id="message-flow" class="flex-1 overflow-y-auto p-8 space-y-4">
+                            <!-- Messages here -->
+                        </div>
+                        <div id="message-input-area" class="hidden p-6 bg-white border-t border-slate-100">
+                            <div class="flex gap-4">
+                                <input type="text" id="msg-input" placeholder="Type your message..." class="flex-1 px-6 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500">
+                                <button onclick="sendMessage()" class="bg-indigo-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Gallery Content -->
+            <section id="content-gallery" class="hidden">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-bold text-slate-800">Family Memories</h2>
+                    <p class="text-sm text-slate-400">Shared by family members</p>
+                </div>
+                <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+            </section>
+
+            <!-- Family Map Content -->
+            <section id="content-map" class="hidden">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-bold text-slate-800">Family Footprint</h2>
+                    <p class="text-sm text-slate-400">Where our family lives across the globe</p>
+                </div>
+                <div id="family-map" class="h-[600px] w-full rounded-[3rem] shadow-inner border border-slate-100 z-10"></div>
+            </section>
+
+            <!-- Cookbook Content -->
+            <section id="content-cookbook" class="hidden">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Family Cookbook</h2>
+                        <p class="text-sm text-slate-400">Heritage recipes passed through generations</p>
+                    </div>
+                    <button onclick="openRecipeModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Add Recipe
+                    </button>
+                </div>
+                <div id="recipe-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+            </section>
+
+            <!-- Traditions Content -->
+            <section id="content-traditions" class="hidden">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Family Traditions</h2>
+                        <p class="text-sm text-slate-400">Stories and rituals that define our heritage</p>
+                    </div>
+                    <button onclick="openTraditionModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Share Tradition
+                    </button>
+                </div>
+                <div id="tradition-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+            </section>
+
+            <!-- Memory Lane Content -->
+            <section id="content-memorylane" class="hidden">
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Memory Lane</h2>
+                        <p class="text-sm text-slate-400">A journey through our family's historical milestones.</p>
+                    </div>
+                    <button onclick="openMemoryModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Add Milestone
+                    </button>
+                </div>
+                <div id="memory-timeline" class="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+                    <!-- Timeline items injected here -->
+                </div>
+            </section>
+
+            <!-- Admin Approvals Content -->
+            <section id="content-approvals" class="hidden">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-slate-800">Admin Approvals</h2>
+                    <p class="text-sm text-slate-500">Review and approve changes submitted by the family.</p>
+                </div>
+
+                <div class="space-y-12">
+                    <!-- Deletion Requests -->
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                            <i class="fas fa-user-minus text-red-400"></i> Deletion Requests
+                        </h3>
+                        <div id="deletion-requests" class="grid gap-4"></div>
+                    </div>
+                    <!-- Update Requests -->
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                            <i class="fas fa-user-edit text-amber-400"></i> Information Updates
+                        </h3>
+                        <div id="update-requests" class="grid gap-4"></div>
+                    </div>
+                    <!-- Relationship Overrides -->
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                            <i class="fas fa- people-arrows text-indigo-400"></i> Relationship Overrides
+                        </h3>
+                        <div id="relationship-overrides" class="grid gap-4"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Edit Member Modal -->
+    <div id="edit-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[100] p-6 backdrop-blur-sm">
+        <div class="bg-white rounded-[3rem] p-10 max-w-4xl w-full shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-start mb-10">
+                <div>
+                    <h2 id="edit-modal-title" class="text-3xl font-extrabold text-slate-800">Edit Member</h2>
+                    <p id="edit-modal-subtitle" class="text-slate-400 font-medium">Update profile information in the database.</p>
+                </div>
+                <button onclick="closeEditModal()" class="text-slate-300 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
             </div>
 
-            <div class="space-y-5">
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">Phone Number</label>
-                    <input type="text" id="login-phone" placeholder="9876543210" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:bg-white outline-none transition">
+            <form id="edit-form" class="space-y-8" onsubmit="event.preventDefault()">
+                <input type="hidden" id="edit-id">
+
+                <div class="flex flex-col md:flex-row gap-10">
+                    <!-- Photo Column -->
+                    <div class="w-full md:w-1/3 space-y-6">
+                        <div class="relative group">
+                            <div id="edit-photo-preview" class="w-full aspect-square rounded-[2rem] bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden text-slate-300">
+                                <i class="fas fa-user text-6xl"></i>
+                            </div>
+                            <label class="absolute inset-0 cursor-pointer flex items-center justify-center bg-indigo-600/0 group-hover:bg-indigo-600/80 transition rounded-[2rem] opacity-0 group-hover:opacity-100">
+                                <input type="file" id="edit-photo-input" class="hidden" accept="image/*">
+                                <span class="text-white font-bold"><i class="fas fa-camera mr-2"></i> Change Photo</span>
+                            </label>
+                        </div>
+                        <p class="text-[10px] text-center text-slate-400 uppercase tracking-widest font-bold">Recommended: Square Image</p>
+                    </div>
+
+                    <!-- Fields Column -->
+                    <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Full Name</label>
+                            <input type="text" id="edit-name" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Family ID (e.g. AB12)</label>
+                            <input type="text" id="edit-familyId" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Gender</label>
+                            <select id="edit-gender" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
+                                <option>Male</option>
+                                <option>Female</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Date of Birth</label>
+                            <input type="text" id="edit-dob" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Phone Number</label>
+                            <input type="text" id="edit-phone" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Email Address</label>
+                            <input type="email" id="edit-email" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Marriage Date</label>
+                            <input type="text" id="edit-marriage" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="Optional">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Bereavement Date</label>
+                            <input type="text" id="edit-bereavement" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="Optional">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Current City</label>
+                            <input type="text" id="edit-location" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="City, Country">
+                        </div>
+                        <div class="space-y-2 md:col-span-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Social Media Links</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <input type="text" id="edit-facebook" placeholder="Facebook URL" class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-xs">
+                                <input type="text" id="edit-instagram" placeholder="Instagram URL" class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-xs">
+                                <input type="text" id="edit-youtube" placeholder="YouTube URL" class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-xs">
+                            </div>
+                        </div>
+                        <div class="space-y-2 md:col-span-2">
+                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Home Address</label>
+                            <textarea id="edit-address" rows="2" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700"></textarea>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">Password</label>
-                    <input type="password" id="login-pwd" placeholder="••••••••" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:bg-white outline-none transition">
+
+                <div class="flex gap-4 pt-8 border-t border-slate-100">
+                    <button id="save-btn" class="flex-1 bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-lg hover:bg-indigo-700 transition shadow-2xl shadow-indigo-100">
+                        Apply Changes
+                    </button>
+                    <button onclick="closeEditModal()" class="flex-1 bg-slate-100 text-slate-500 py-5 rounded-[2rem] font-bold text-lg hover:bg-slate-200 transition">
+                        Cancel
+                    </button>
                 </div>
-                <p id="login-error" class="text-red-500 text-sm hidden bg-red-50 p-3 rounded-xl border border-red-100"></p>
-                <button onclick="handleLogin()" id="login-btn" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition transform active:scale-95">
-                    Enter Portal
+            </form>
+        </div>
+    </div>
+
+    <!-- Gallery Detail Modal -->
+    <div id="gallery-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[120] px-4 backdrop-blur-sm">
+        <div class="bg-white rounded-[3rem] max-w-5xl w-full shadow-2xl relative overflow-hidden flex flex-col md:flex-row h-[85vh]">
+            <button onclick="closeGalleryModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition z-10 bg-white/50 backdrop-blur-md w-10 h-10 rounded-full flex items-center justify-center">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <!-- Image Area -->
+            <div class="w-full md:w-2/3 bg-slate-900 flex items-center justify-center overflow-hidden">
+                <img id="modal-img" src="" class="max-w-full max-h-full object-contain">
+            </div>
+
+            <!-- Interaction Sidebar -->
+            <div class="w-full md:w-1/3 flex flex-col border-l border-slate-100 h-full">
+                <div class="p-8 border-b border-slate-100">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div id="author-initial" class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-sm"></div>
+                        <div>
+                            <p id="modal-author" class="font-bold text-slate-800"></p>
+                            <p id="modal-date" class="text-xs text-slate-400"></p>
+                        </div>
+                    </div>
+                    <p id="modal-caption" class="text-slate-600 text-sm leading-relaxed mb-6"></p>
+
+                    <div class="flex items-center gap-6">
+                        <button id="like-btn" class="flex items-center gap-2 text-slate-400 hover:text-pink-500 transition group">
+                            <i class="far fa-heart text-xl group-hover:scale-125 transition"></i>
+                            <span id="like-count" class="font-bold text-sm">0</span>
+                        </button>
+                        <div class="flex items-center gap-2 text-slate-400">
+                            <i class="far fa-comment text-xl"></i>
+                            <span id="comment-count" class="font-bold text-sm">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comments List -->
+                <div id="modal-comments" class="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-50/30">
+                    <!-- Comments injected here -->
+                </div>
+
+                <!-- Comment Input -->
+                <div class="p-6 border-t border-slate-100 bg-white">
+                    <div class="flex gap-3">
+                        <input type="text" id="comment-input" placeholder="Write a family comment..." class="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                        <button id="submit-comment" class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition">
+                            <i class="fas fa-paper-plane text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recipe Details Modal -->
+    <div id="recipe-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[120] px-4 backdrop-blur-sm">
+        <div class="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl relative overflow-hidden flex flex-col h-[85vh]">
+            <button onclick="closeRecipeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition z-10 bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <div class="flex-1 overflow-y-auto">
+                <div id="recipe-modal-image" class="h-64 bg-slate-100 relative">
+                    <!-- Image injected here -->
+                </div>
+                <div class="p-8 md:p-12">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h2 id="recipe-modal-title" class="text-3xl font-black text-slate-800 mb-2"></h2>
+                            <p id="recipe-modal-author" class="text-indigo-600 font-bold text-sm"></p>
+                        </div>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-12">
+                        <div>
+                            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
+                                <i class="fas fa-list-ul text-indigo-500"></i> Ingredients
+                            </h3>
+                            <ul id="recipe-modal-ingredients" class="space-y-3 text-slate-600">
+                                <!-- Ingredients here -->
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
+                                <i class="fas fa-mortar-pestle text-indigo-500"></i> Instructions
+                            </h3>
+                            <div id="recipe-modal-steps" class="space-y-4 text-slate-600 leading-relaxed">
+                                <!-- Steps here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="recipe-interaction" class="mt-12 pt-8 border-t border-slate-100">
+                        <div class="flex items-center gap-6 mb-8">
+                            <button id="recipe-like-btn" class="flex items-center gap-2 text-slate-400 hover:text-pink-500 transition group">
+                                <i class="far fa-heart text-2xl group-hover:scale-125 transition"></i>
+                                <span id="recipe-like-count" class="font-bold text-lg">0</span>
+                            </button>
+                            <div class="flex items-center gap-2 text-slate-400">
+                                <i class="far fa-comment text-2xl"></i>
+                                <span id="recipe-comment-count" class="font-bold text-lg">0</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <h4 class="font-bold text-slate-800 uppercase tracking-widest text-xs">Comments</h4>
+                            <div id="recipe-comments-list" class="space-y-4 max-h-60 overflow-y-auto pr-2">
+                                <!-- Comments here -->
+                            </div>
+                            <div class="flex gap-4 mt-6">
+                                <input type="text" id="recipe-comment-input" placeholder="Add a comment..." class="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                                <button id="recipe-comment-submit" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition">Post</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="recipe-admin-actions" class="mt-12 pt-8 border-t border-slate-100 hidden flex gap-4">
+                        <button id="recipe-edit-btn" class="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-bold hover:bg-indigo-600 hover:text-white transition flex items-center gap-2">
+                            <i class="fas fa-edit"></i> Edit Recipe
+                        </button>
+                        <button id="recipe-delete-btn" class="bg-red-50 text-red-500 px-6 py-3 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition flex items-center gap-2">
+                            <i class="fas fa-trash"></i> Delete Recipe
+                        </button>
+                        <button id="recipe-request-delete-btn" class="bg-amber-50 text-amber-600 px-6 py-3 rounded-2xl font-bold hover:bg-amber-600 hover:text-white transition flex items-center gap-2">
+                            <i class="fas fa-flag"></i> Request Deletion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Recipe Modal -->
+    <div id="add-recipe-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[130] p-6 backdrop-blur-sm">
+        <div class="bg-white rounded-[3rem] p-10 max-w-2xl w-full shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h2 id="recipe-modal-title-text" class="text-3xl font-extrabold text-slate-800">Share Family Recipe</h2>
+                    <p class="text-slate-400 font-medium">Keep our culinary heritage alive.</p>
+                </div>
+                <button onclick="closeRecipeModal()" class="text-slate-300 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
+            </div>
+
+            <div class="space-y-6">
+                <input type="hidden" id="rec-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Recipe Title</label>
+                        <input type="text" id="rec-title" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Category</label>
+                        <select id="rec-category" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
+                            <option>Main Dish</option>
+                            <option>Dessert</option>
+                            <option>Snack/Starter</option>
+                            <option>Drink</option>
+                            <option>Traditional/Holiday</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center px-1">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Ingredients (One per line)</label>
+                        <button onclick="startDictation('rec-ingredients', 'hi-IN')" class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1 text-[10px] font-bold">
+                            <i class="fas fa-microphone"></i> Dictate (Hindi)
+                        </button>
+                    </div>
+                    <div id="audio-playback-rec-ingredients" class="hidden mb-2 p-2 bg-indigo-50 rounded-xl flex items-center gap-2">
+                        <span class="text-[10px] font-bold text-indigo-400 uppercase">Recording</span>
+                        <audio controls class="h-8 flex-1"></audio>
+                    </div>
+                    <textarea id="rec-ingredients" rows="4" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium"></textarea>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center px-1">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Instructions (One step per line)</label>
+                        <button onclick="startDictation('rec-steps', 'hi-IN')" class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1 text-[10px] font-bold">
+                            <i class="fas fa-microphone"></i> Dictate (Hindi)
+                        </button>
+                    </div>
+                    <div id="audio-playback-rec-steps" class="hidden mb-2 p-2 bg-indigo-50 rounded-xl flex items-center gap-2">
+                        <span class="text-[10px] font-bold text-indigo-400 uppercase">Recording</span>
+                        <audio controls class="h-8 flex-1"></audio>
+                    </div>
+                    <textarea id="rec-steps" rows="6" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium"></textarea>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Recipe Photo</label>
+                    <input type="file" id="rec-photo" accept="image/*" class="w-full">
+                </div>
+                <button id="recipe-save-btn" onclick="handleSaveRecipe()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-lg hover:bg-indigo-700 transition">
+                    Save Recipe
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Firebase Logic -->
+    <!-- Add Tradition Modal -->
+    <div id="add-tradition-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[130] p-6 backdrop-blur-sm">
+        <div class="bg-white rounded-[3rem] p-10 max-w-2xl w-full shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h2 id="tradition-modal-title-text" class="text-3xl font-extrabold text-slate-800">Share Family Tradition</h2>
+                    <p class="text-slate-400 font-medium">Document our unique family rituals.</p>
+                </div>
+                <button onclick="closeTraditionModal()" class="text-slate-300 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
+            </div>
+
+            <div class="space-y-6">
+                <input type="hidden" id="trad-id">
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Tradition Title</label>
+                    <input type="text" id="trad-title" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center px-1">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Story / Description</label>
+                        <button onclick="startDictation('trad-description', 'hi-IN')" class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1 text-[10px] font-bold">
+                            <i class="fas fa-microphone"></i> Dictate (Hindi)
+                        </button>
+                    </div>
+                    <div id="audio-playback-trad-description" class="hidden mb-2 p-2 bg-indigo-50 rounded-xl flex items-center gap-2">
+                        <span class="text-[10px] font-bold text-indigo-400 uppercase">Recording</span>
+                        <audio controls class="h-8 flex-1"></audio>
+                    </div>
+                    <textarea id="trad-description" rows="8" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium" placeholder="Tell the story of this tradition..."></textarea>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Tradition Photo</label>
+                    <input type="file" id="trad-photo" accept="image/*" class="w-full">
+                </div>
+                <button id="tradition-save-btn" onclick="handleSaveTradition()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-lg hover:bg-indigo-700 transition">
+                    Save Tradition
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Memory Modal -->
+    <div id="add-memory-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[130] p-6 backdrop-blur-sm">
+        <div class="bg-white rounded-[3rem] p-10 max-w-2xl w-full shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <h2 id="memory-modal-title-text" class="text-3xl font-extrabold text-slate-800">Add Historical Milestone</h2>
+                    <p class="text-slate-400 font-medium">Capture a significant moment in our family's history.</p>
+                </div>
+                <button onclick="closeMemoryModal()" class="text-slate-300 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
+            </div>
+
+            <div class="space-y-6">
+                <input type="hidden" id="mem-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Milestone Title</label>
+                        <input type="text" id="mem-title" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Year</label>
+                        <input type="text" id="mem-year" placeholder="e.g. 1954" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center px-1">
+                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Description</label>
+                        <button onclick="startDictation('mem-description', 'hi-IN')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 transition">
+                            <i class="fas fa-microphone"></i> Dictate (Hindi)
+                        </button>
+                    </div>
+                    <div id="audio-playback-mem-description" class="hidden mb-2 p-2 bg-indigo-50 rounded-xl flex items-center gap-2">
+                        <span class="text-[10px] font-bold text-indigo-400 uppercase">Recording</span>
+                        <audio controls class="h-8 flex-1"></audio>
+                    </div>
+                    <textarea id="mem-description" rows="4" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium" placeholder="Describe this historical event..."></textarea>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Milestone Photo</label>
+                    <input type="file" id="mem-photo" accept="image/*" class="w-full">
+                </div>
+                <button id="memory-save-btn" onclick="handleSaveMemory()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-lg hover:bg-indigo-700 transition">
+                    Save Milestone
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tradition Detail Modal -->
+    <div id="tradition-detail-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[120] px-4 backdrop-blur-sm">
+        <div class="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl relative overflow-hidden flex flex-col h-[85vh]">
+            <button onclick="closeTraditionModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition z-10 bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <div class="flex-1 overflow-y-auto">
+                <div id="tradition-modal-image" class="h-80 bg-slate-100 relative"></div>
+                <div class="p-8 md:p-12">
+                    <h2 id="tradition-modal-title" class="text-4xl font-black text-slate-800 mb-2"></h2>
+                    <p id="tradition-modal-author" class="text-indigo-600 font-bold text-sm mb-8"></p>
+                    <div id="tradition-modal-description" class="text-slate-600 leading-relaxed text-lg whitespace-pre-wrap"></div>
+
+                    <div id="tradition-interaction" class="mt-12 pt-8 border-t border-slate-100">
+                        <div class="flex items-center gap-6 mb-8">
+                            <button id="tradition-like-btn" class="flex items-center gap-2 text-slate-400 hover:text-pink-500 transition group">
+                                <i class="far fa-heart text-2xl group-hover:scale-125 transition"></i>
+                                <span id="tradition-like-count" class="font-bold text-lg">0</span>
+                            </button>
+                            <div class="flex items-center gap-2 text-slate-400">
+                                <i class="far fa-comment text-2xl"></i>
+                                <span id="tradition-comment-count" class="font-bold text-lg">0</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <h4 class="font-bold text-slate-800 uppercase tracking-widest text-xs">Comments</h4>
+                            <div id="tradition-comments-list" class="space-y-4 max-h-60 overflow-y-auto pr-2">
+                                <!-- Comments here -->
+                            </div>
+                            <div class="flex gap-4 mt-6">
+                                <input type="text" id="tradition-comment-input" placeholder="Add a comment..." class="flex-1 bg-slate-50 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500">
+                                <button id="tradition-comment-submit" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition">Post</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tradition-admin-actions" class="mt-12 pt-8 border-t border-slate-100 hidden flex gap-4">
+                        <button id="tradition-edit-btn" class="bg-indigo-50 text-indigo-600 px-6 py-3 rounded-2xl font-bold hover:bg-indigo-600 hover:text-white transition flex items-center gap-2">
+                            <i class="fas fa-edit"></i> Edit Tradition
+                        </button>
+                        <button id="tradition-delete-btn" class="bg-red-50 text-red-500 px-6 py-3 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition flex items-center gap-2">
+                            <i class="fas fa-trash"></i> Delete Tradition
+                        </button>
+                        <button id="tradition-request-delete-btn" class="bg-amber-50 text-amber-600 px-6 py-3 rounded-2xl font-bold hover:bg-amber-600 hover:text-white transition flex items-center gap-2">
+                            <i class="fas fa-flag"></i> Request Deletion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, getDoc, setDoc, doc, query, where, orderBy, deleteDoc, updateDoc, onSnapshot, arrayUnion, arrayRemove, enableIndexedDbPersistence, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyAkGk7z5Pcs3yrn0eqagkG1NRV6ibQ4Y-I",
+            apiKey: "AIzaSyAhdvWtQpVKrRrslgSM_Q_xDX9U_bhZhNY",
             authDomain: "circlebirthdays.firebaseapp.com",
             projectId: "circlebirthdays",
             storageBucket: "circlebirthdays.firebasestorage.app",
             messagingSenderId: "360638452983",
-            appId: "1:360638452983:web:7859d040778f566434aff2",
-            measurementId: "G-GSSY5YF7S9"
+            appId: "1:360638452983:web:7538c6d49964b61134aff2"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const storage = getStorage(app);
 
-        async function sha256(message) {
-            const msgUint8 = new TextEncoder().encode(message);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
+        // Enable Offline Persistence
+        try {
+            enableIndexedDbPersistence(db).catch((err) => {
+                if (err.code == 'failed-precondition') {
+                    console.warn("Persistence failed: Multiple tabs open");
+                } else if (err.code == 'unimplemented') {
+                    console.warn("Persistence failed: Browser doesn't support it");
+                }
+            });
+        } catch (e) { console.error("Persistence setup error", e); }
 
-        let allMembers = [];
+        // Core App State
         let currentUser = null;
+        let allMembers = [];
         let membersPromise = null;
-        let treeScale = 1;
+        let treeScale = 0.25;
+        let map = null;
 
-        // Family Utility Logic for Relationships
+        // Family Utility Functions
         const FamilyUtils = {
             isFemale: (gender) => {
                 const g = (gender || "").toLowerCase();
-                return g === "female" || g === "f" || g === "woman";
+                return g === 'female' || g === 'f' || g === 'woman';
             },
             isMale: (gender) => {
                 const g = (gender || "").toLowerCase();
-                return g === "male" || g === "m" || g === "man";
+                return g === 'male' || g === 'm' || g === 'man';
             },
-            getParentBase: (baseId) => {
-                if (!baseId) return "";
-                const bid = baseId.toString().trim().toUpperCase();
-                if (bid === "P") return "";
-                return bid.length === 1 ? "P" : bid.slice(0, -1);
+            getParentBase: (id) => {
+                if (id === "P" || !id) return "";
+                return id.length === 1 ? "P" : id.slice(0, -1);
             },
             isElder: (id1, id2) => {
                 let i = 0;
                 while (i < id1.length && i < id2.length) {
-                    if (id1[i] !== id2[i]) {
-                        if (/\d/.test(id1[i]) && /\d/.test(id2[i])) {
-                            const n1 = parseInt(id1.substring(i).match(/\d+/)[0]);
-                            const n2 = parseInt(id2.substring(i).match(/\d+/)[0]);
+                    const c1 = id1[i];
+                    const c2 = id2[i];
+                    if (c1 !== c2) {
+                        const m1 = id1.substring(i).match(/^\d+/);
+                        const m2 = id2.substring(i).match(/^\d+/);
+                        if (m1 && m2) {
+                            const n1 = parseInt(m1[0]);
+                            const n2 = parseInt(m2[0]);
                             if (n1 !== n2) return n1 < n2;
                         }
-                        return id1[i] < id2[i];
+                        return c1 < c2;
                     }
                     i++;
                 }
                 return id1.length < id2.length;
             },
-            getRelationship: (target, observer, allMembers) => {
-                if (target.phoneNumber === observer.phoneNumber) return null;
+            findSpouse: (member, members) => {
+                const id = member.familyId;
+                if (!id) return null;
+                const spouseId = id.endsWith('0') ? id.slice(0, -1) : id + '0';
+                return members.find(m => m.familyId === spouseId);
+            },
+            findParents: (member, members) => {
+                const id = member.familyId;
+                if (!id || id === 'P') return { father: null, mother: null };
+                const isSpouseSuffix = id.endsWith("0");
+                const baseId = isSpouseSuffix ? id.slice(0, -1) : id;
+
+                if (!isSpouseSuffix && (baseId.length > 1 || (baseId.length === 1 && baseId !== "P"))) {
+                    const parentBaseId = baseId.length > 1 ? baseId.slice(0, -1) : "P";
+                    const parentSpouseId = parentBaseId === "P" ? "P0" : parentBaseId + "0";
+
+                    const p1 = members.find(m => m.familyId === parentBaseId);
+                    const p2 = members.find(m => m.familyId === parentSpouseId);
+
+                    if (p1 || p2) {
+                        if (FamilyUtils.isMale(p1?.gender)) return { father: p1, mother: p2 };
+                        if (FamilyUtils.isFemale(p1?.gender)) return { father: p2, mother: p1 };
+                        if (FamilyUtils.isMale(p2?.gender)) return { father: p2, mother: p1 };
+                        return { father: p1, mother: p2 };
+                    }
+                }
+                return { father: null, mother: null };
+            },
+            getImmediateFamily: (member, members) => {
+                const id = member.familyId;
+                if (!id) return "";
+                const isSpouseSuffix = id.endsWith("0");
+                const baseId = isSpouseSuffix ? id.slice(0, -1) : id;
+
+                const childrenFilter = (m) => {
+                    if (baseId === "P") {
+                        return m.familyId.length === 1 && m.familyId !== "P" && !m.familyId.endsWith("0");
+                    } else {
+                        return m.familyId.length === baseId.length + 1 && m.familyId.startsWith(baseId) && !m.familyId.endsWith("0");
+                    }
+                };
+
+                const children = members.filter(childrenFilter).sort((a, b) => a.name.localeCompare(b.name));
+                if (children.length === 0) return "";
+                return "Children: " + [...new Set(children.map(c => c.name))].join(", ");
+            },
+            getRelationshipText: (target, observer, allMembers) => {
+                if (!observer || !target || target.id === observer.id) return "You";
                 const tId = target.familyId;
                 const oId = observer.familyId;
-                if (!tId || !oId) return null;
+                if (!tId || !oId) return "Family Member";
 
-                // Handle Spouse logic
-                let effectiveOId = oId;
-                let isObserverSpouse = oId.endsWith("0");
-                if (isObserverSpouse) {
+                // Mirror relationships if observer is a spouse
+                if (oId.endsWith("0")) {
                     const partnerBase = oId.slice(0, -1);
                     const partner = allMembers.find(m => m.familyId === partnerBase);
                     if (partner) {
-                        const relToPartner = FamilyUtils.getRelationship(target, partner, allMembers);
-                        if (relToPartner) {
-                            if (!FamilyUtils.isFemale(partner.gender)) { // Observer is Wife
-                                return { "Bhai": "Devar", "Bhaiya": "Jeth", "Behan": "Nanad", "Didi": "Nanad", "Papa": "Sasurji", "Mummy": "Saasuma" }[relToPartner] || relToPartner;
-                            } else { // Observer is Husband
-                                return { "Bhai": "Saala", "Bhaiya": "Saala", "Behan": "Saali", "Didi": "Saali", "Papa": "Sasurji", "Mummy": "Saasuma" }[relToPartner] || relToPartner;
+                        const relToPartner = FamilyUtils.getRelationshipText(target, partner, allMembers);
+                        if (relToPartner && relToPartner !== "Family Member") {
+                            const isWife = !FamilyUtils.isMale(partner.gender); // Observer is Wife
+                            if (isWife) {
+                                switch (relToPartner) {
+                                    case "Bhai": return "Devar";
+                                    case "Bhaiya": return "Jeth";
+                                    case "Behan": case "Didi": return "Nanad";
+                                    case "Papa": return "Sasurji";
+                                    case "Mummy": return "Saasuma";
+                                    case "Bhabhi":
+                                        const hId = target.familyId.endsWith("0") ? target.familyId.slice(0, -1) : null;
+                                        if (hId) {
+                                            const husband = allMembers.find(m => m.familyId === hId);
+                                            if (husband) {
+                                                const relToH = FamilyUtils.getRelationshipText(husband, partner, allMembers);
+                                                if (relToH === "Bhai") return "Devrani";
+                                                if (relToH === "Bhaiya") return "Jethani";
+                                            }
+                                        }
+                                        return "Bhabhi";
+                                }
+                            } else {
+                                switch (relToPartner) {
+                                    case "Bhai": case "Bhaiya": return "Saala";
+                                    case "Behan": case "Didi": return "Saali";
+                                    case "Papa": return "Sasurji";
+                                    case "Mummy": return "Saasuma";
+                                }
                             }
+                            return relToPartner;
                         }
                     }
                 }
 
                 const tBase = tId.endsWith("0") ? tId.slice(0, -1) : tId;
                 const oBase = oId.endsWith("0") ? oId.slice(0, -1) : oId;
+
                 const tGen = tBase === "P" ? 0 : tBase.length;
                 const oGen = oBase === "P" ? 0 : oBase.length;
                 const diff = oGen - tGen;
+
                 const isTargetSpouse = tId.endsWith("0");
                 const isFemale = FamilyUtils.isFemale(target.gender);
 
+                // Same Generation
                 if (diff === 0) {
-                    if (tBase === oBase && tId !== oId) return isFemale ? "Wife" : "Husband";
+                    if (tBase === oBase) {
+                        if (tId !== oId) return isFemale ? "Wife" : "Husband";
+                    }
                     if (tBase !== "P" && oBase !== "P") {
-                        const elder = FamilyUtils.isElder(tBase, oBase);
+                        const isElder = FamilyUtils.isElder(tBase, oBase);
                         if (isTargetSpouse) return isFemale ? "Bhabhi" : "Jijaji";
-                        return isFemale ? (elder ? "Didi" : "Behan") : (elder ? "Bhaiya" : "Bhai");
+                        return isFemale ? (isElder ? "Didi" : "Behan") : (isElder ? "Bhaiya" : "Bhai");
                     }
                 }
+
+                // Parent Generation
                 if (diff === 1) {
                     const oParentBase = FamilyUtils.getParentBase(oBase);
                     if (tBase === oParentBase) return (isFemale || isTargetSpouse) ? "Mummy" : "Papa";
@@ -267,50 +956,607 @@
                         (tParentBase && oParentParentBase && FamilyUtils.getParentBase(tParentBase) === FamilyUtils.getParentBase(oParentParentBase));
 
                     if (areExtendedSiblings && tBase !== "P") {
-                        const elder = FamilyUtils.isElder(tBase, oParentBase);
-                        const isPaternal = oBase[0] >= 'A' && oBase[0] <= 'G' && tBase[0] >= 'A' && tBase[0] <= 'G';
+                        const isElder = FamilyUtils.isElder(tBase, oParentBase);
+                        const oParent = allMembers.find(m => m.familyId === oParentBase);
+                        const isPaternal = !oParent || FamilyUtils.isMale(oParent.gender) ||
+                                          (['A','B','C','D','E','F','G'].includes(oBase[0]) && ['A','B','C','D','E','F','G'].includes(tBase[0]));
+
                         if (isTargetSpouse) {
-                            if (isFemale) return isPaternal ? (elder ? "Badi Amma" : "Chachiji") : (elder ? "Badi Mamiji" : "Choti Mamiji");
-                            return isPaternal ? (elder ? "Bade Fufa" : "Chote Fufa") : (elder ? "Bade Mausa" : "Chote Mausa");
+                            if (isFemale) return isPaternal ? (isElder ? "Badi Amma" : "Chachiji") : (isElder ? "Badi Mamiji" : "Choti Mamiji");
+                            return isPaternal ? (isElder ? "Bade Fufa" : "Chote Fufa") : (isElder ? "Bade Mausa" : "Chote Mausa");
                         }
-                        if (isFemale) return isPaternal ? (elder ? "Badi Bua" : "Choti Bua") : (elder ? "Badi Mausi" : "Choti Mausi");
-                        return isPaternal ? (elder ? "Bade Papa" : "Chachaji") : (elder ? "Bade Mamaji" : "Chote Mamaji");
+                        if (isFemale) return isPaternal ? (isElder ? "Badi Bua" : "Choti Bua") : (isElder ? "Badi Mausi" : "Choti Mausi");
+                        return isPaternal ? (isElder ? "Bade Papa" : "Chachaji") : (isElder ? "Bade Mamaji" : "Chote Mamaji");
                     }
                 }
+
+                // Grandparent Generation
                 if (diff === 2) {
                     const oParentBase = FamilyUtils.getParentBase(oBase);
                     const oParent = allMembers.find(m => m.familyId === oParentBase);
                     const isMaternal = oParent && FamilyUtils.isFemale(oParent.gender) && !(oParentBase.length === 1 && oParentBase !== "P");
                     const oGrandParentBase = FamilyUtils.getParentBase(oParentBase);
-                    if (tBase === oGrandParentBase) return isMaternal ? (isFemale ? "Nani" : "Nana") : (isFemale ? "Dadi" : "Dadaji");
-                }
-                if (diff === -1) {
-                    if (tBase.startsWith(oBase)) return isTargetSpouse ? (isFemale ? "Bahu" : "Damand") : (isFemale ? "Beti" : "Beta");
-                }
-                if (diff === -2) {
-                    if (tBase.startsWith(oBase)) {
-                        const tParentId = FamilyUtils.getParentBase(tBase);
-                        const tParent = allMembers.find(m => m.familyId === tParentId);
-                        const isDaughterChild = tParent && FamilyUtils.isFemale(tParent.gender);
-                        return isDaughterChild ? (isFemale ? "Natin" : "Nati") : (isFemale ? "Poti" : "Pota");
+                    if (tBase === oGrandParentBase) {
+                        if (isMaternal) return isFemale ? "Nani" : "Nana";
+                        return isFemale ? "Dadi" : "Dadaji";
+                    }
+                    if (tBase && oGrandParentBase && FamilyUtils.getParentBase(tBase) === FamilyUtils.getParentBase(oGrandParentBase)) {
+                        const isElder = FamilyUtils.isElder(tBase, oGrandParentBase);
+                        return isMaternal ?
+                            (isFemale ? (isElder ? "Badi Nani" : "Choti Nani") : (isElder ? "Bade Nana" : "Chote Nana")) :
+                            (isFemale ? (isElder ? "Badi Dadi" : "Choti Dadi") : (isElder ? "Bade Dadaji" : "Chote Dadaji"));
                     }
                 }
 
-                // Catch-all for same family branch but unknown depth
+                // Child Generation
+                if (diff === -1) {
+                    if (tBase.startsWith(oBase) || (oBase === "P" && tBase.length === 1)) {
+                        if (isTargetSpouse) return isFemale ? "Bahu" : "Damaad";
+                        return isFemale ? "Beti" : "Beta";
+                    }
+                    const tParentId = FamilyUtils.getParentBase(tBase);
+                    const tParent = allMembers.find(m => m.familyId === tParentId);
+                    if (tParent) {
+                        const relToParent = FamilyUtils.getRelationshipText(tParent, observer, allMembers);
+                        if (["Bhai", "Bhaiya", "Didi", "Behan"].includes(relToParent)) {
+                            if (isTargetSpouse) return isFemale ? "Bahu" : "Damaad";
+                            return FamilyUtils.isFemale(tParent.gender) ? (isFemale ? "Bhanji" : "Bhanja") : (isFemale ? "Bhatiji" : "Bhatija");
+                        }
+                    }
+                }
+
+                // Grandchild Generation
+                if (diff === -2) {
+                    const tParentId = FamilyUtils.getParentBase(tBase);
+                    const tParent = allMembers.find(m => m.familyId === tParentId);
+                    const isDaughterChild = tParent && FamilyUtils.isFemale(tParent.gender);
+                    if (tBase.startsWith(oBase) || (oBase === "P" && tBase.length === 2)) {
+                        if (isTargetSpouse) return isFemale ? "Bahu" : "Damaad";
+                        return isDaughterChild ? (isFemale ? "Natin" : "Nati") : (isFemale ? "Poti" : "Pota");
+                    }
+                    if (tParent) {
+                        const tGrandparentId = FamilyUtils.getParentBase(tParentId);
+                        const tGrandparent = allMembers.find(m => m.familyId === tGrandparentId);
+                        if (tGrandparent) {
+                            const relToGP = FamilyUtils.getRelationshipText(tGrandparent, observer, allMembers);
+                            if (["Bhai", "Bhaiya", "Didi", "Behan"].includes(relToGP)) {
+                                if (isTargetSpouse) return isFemale ? "Bahu" : "Damaad";
+                                return isDaughterChild ? (isFemale ? "Natin" : "Nati") : (isFemale ? "Poti" : "Pota");
+                            }
+                        }
+                    }
+                }
+
                 if (tBase.startsWith(oBase) && diff < -2) return "Grandchild";
                 if (oBase.startsWith(tBase) && diff > 2) return "Grandparent";
 
-                return null;
+                return "Family Member";
+            },
+            populateAllLinks: (members, current) => {
+                return members.map(m => {
+                    const spouse = FamilyUtils.findSpouse(m, members);
+                    const parents = FamilyUtils.findParents(m, members);
+                    return {
+                        ...m,
+                        spouseName: spouse ? spouse.name : m.spouseName,
+                        fatherName: parents.father ? parents.father.name : m.fatherName,
+                        motherName: parents.mother ? parents.mother.name : m.motherName,
+                        immediateFamily: FamilyUtils.getImmediateFamily(m, members),
+                        relationship: FamilyUtils.getRelationshipText(m, current, members)
+                    };
+                });
             }
         };
 
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        window.switchTab = (tab) => {
+            const tabs = ['directory', 'tree', 'discussions', 'approvals', 'messaging', 'gallery', 'map', 'cookbook', 'traditions', 'memorylane'];
+            tabs.forEach(t => {
+                const el = document.getElementById(`content-${t}`);
+                const btn = document.getElementById(`tab-${t}`);
+                if (el) el.classList.add('hidden');
+                if (btn) btn.classList.remove('active-tab');
+            });
+
+            document.getElementById(`content-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('active-tab');
+
+            if (tab === 'tree') setTimeout(renderTree, 100);
+            if (tab === 'messaging') loadChannels();
+            if (tab === 'map') {
+                if (!map) {
+                    map = L.map('family-map').setView([20, 0], 2);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    }).addTo(map);
+                }
+                updateMapMarkers();
+            }
+            if (tab === 'cookbook') {
+                const grid = document.getElementById('recipe-grid');
+                if (grid.innerHTML.includes('fa-circle-notch') || grid.innerHTML === "") {
+                    setupRealtimeRecipes();
+                }
+            }
+            if (tab === 'traditions') {
+                const grid = document.getElementById('tradition-grid');
+                if (grid.innerHTML.includes('fa-circle-notch') || grid.innerHTML === "") {
+                    setupRealtimeTraditions();
+                }
+            }
+            if (tab === 'memorylane') {
+                const timeline = document.getElementById('memory-timeline');
+                if (timeline.innerHTML === "" || timeline.children.length === 0) {
+                    setupRealtimeMemoryLane();
+                }
+            }
+        };
+
+        function setupRealtimeRecipes() {
+            const q = query(collection(db, "recipes"), orderBy("timestamp", "desc"));
+            onSnapshot(q, (snap) => {
+                const grid = document.getElementById('recipe-grid');
+                if (!grid) return;
+                grid.innerHTML = "";
+
+                snap.forEach(docSnap => {
+                    const rec = docSnap.data();
+                    rec.id = docSnap.id;
+                    const card = document.createElement('div');
+                    card.className = "bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-slate-100 group cursor-pointer hover:shadow-xl transition-all duration-500 hover:-translate-y-2 relative";
+                    card.onclick = () => openRecipeDetail(rec);
+
+                    let editBtnHtml = '';
+                    if (currentUser && (currentUser.isAdmin || currentUser.id === rec.authorId)) {
+                        editBtnHtml = `
+                            <button class="absolute top-4 right-4 bg-white/90 backdrop-blur-md w-8 h-8 rounded-full flex items-center justify-center text-indigo-600 shadow-sm hover:bg-indigo-600 hover:text-white transition-all z-20 recipe-edit-btn">
+                                <i class="fas fa-edit text-xs"></i>
+                            </button>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div class="h-48 overflow-hidden relative">
+                            <img src="${rec.imageUrl || 'https://images.unsplash.com/photo-1495195129352-aec325a55b65?auto=format&fit=crop&q=80&w=400'}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
+                            <div class="absolute top-4 left-4">
+                                <span class="bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-indigo-600 uppercase tracking-widest shadow-sm">${rec.category || 'Family Secret'}</span>
+                            </div>
+                            ${editBtnHtml}
+                        </div>
+                        <div class="p-6">
+                            <h3 class="font-bold text-slate-800 text-lg mb-1 truncate">${rec.title}</h3>
+                            <p class="text-xs text-slate-400 mb-4">By ${rec.authorName}</p>
+                            <div class="flex justify-between items-center text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">
+                                <span>${(rec.ingredients || []).length} Ingredients</span>
+                                <span>View Recipe <i class="fas fa-arrow-right ml-1"></i></span>
+                            </div>
+                        </div>
+                    `;
+
+                    const btn = card.querySelector('.recipe-edit-btn');
+                    if (btn) {
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            openRecipeModal(rec);
+                        };
+                    }
+
+                    grid.appendChild(card);
+                });
+
+                if (snap.empty) {
+                    grid.innerHTML = `
+                        <div class="col-span-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
+                            <i class="fas fa-utensils text-4xl text-slate-100 mb-4"></i>
+                            <p class="text-slate-400 italic">No recipes shared yet. Cook something up!</p>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function setupRealtimeTraditions() {
+            const q = query(collection(db, "traditions"), orderBy("timestamp", "desc"));
+            onSnapshot(q, (snap) => {
+                const grid = document.getElementById('tradition-grid');
+                if (!grid) return;
+                grid.innerHTML = "";
+
+                snap.forEach(docSnap => {
+                    const trad = docSnap.data();
+                    trad.id = docSnap.id;
+                    const card = document.createElement('div');
+                    card.className = "bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-slate-100 group cursor-pointer hover:shadow-xl transition-all duration-500 hover:-translate-y-2 relative";
+                    card.onclick = () => openTraditionDetail(trad);
+
+                    let editBtnHtml = '';
+                    if (currentUser && (currentUser.isAdmin || currentUser.id === trad.authorId)) {
+                        editBtnHtml = `
+                            <button class="absolute top-4 right-4 bg-white/90 backdrop-blur-md w-8 h-8 rounded-full flex items-center justify-center text-indigo-600 shadow-sm hover:bg-indigo-600 hover:text-white transition-all z-20 tradition-edit-btn">
+                                <i class="fas fa-edit text-xs"></i>
+                            </button>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div class="h-48 overflow-hidden relative">
+                            <img src="${trad.imageUrl || 'https://images.unsplash.com/photo-1514416432279-50fad2824af7?auto=format&fit=crop&q=80&w=400'}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
+                            ${editBtnHtml}
+                        </div>
+                        <div class="p-6">
+                            <h3 class="font-bold text-slate-800 text-lg mb-1 truncate">${trad.title}</h3>
+                            <p class="text-xs text-slate-400 mb-4">By ${trad.authorName}</p>
+                            <p class="text-sm text-slate-500 line-clamp-2 mb-4">${trad.description}</p>
+                            <div class="flex justify-end text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">
+                                <span>Read More <i class="fas fa-arrow-right ml-1"></i></span>
+                            </div>
+                        </div>
+                    `;
+
+                    const btn = card.querySelector('.tradition-edit-btn');
+                    if (btn) {
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            openTraditionModal(trad);
+                        };
+                    }
+
+                    grid.appendChild(card);
+                });
+
+                if (snap.empty) {
+                    grid.innerHTML = `
+                        <div class="col-span-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
+                            <i class="fas fa-scroll text-4xl text-slate-100 mb-4"></i>
+                            <p class="text-slate-400 italic">No traditions shared yet. Tell us a family story!</p>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        window.openTraditionModal = (trad = null) => {
+            const modal = document.getElementById('add-tradition-modal');
+            const titleText = document.getElementById('tradition-modal-title-text');
+            const saveBtn = document.getElementById('tradition-save-btn');
+
+            if (trad) {
+                titleText.innerText = "Edit Family Tradition";
+                saveBtn.innerText = "Update Tradition";
+                document.getElementById('trad-id').value = trad.id;
+                document.getElementById('trad-title').value = trad.title || '';
+                document.getElementById('trad-description').value = trad.description || '';
+            } else {
+                titleText.innerText = "Share Family Tradition";
+                saveBtn.innerText = "Save Tradition";
+                document.getElementById('trad-id').value = "";
+                document.getElementById('trad-title').value = "";
+                const draft = localStorage.getItem('draft_trad-description');
+                document.getElementById('trad-description').value = draft || "";
+            }
+            modal.classList.remove('hidden');
+        };
+
+        window.closeTraditionModal = () => {
+            document.getElementById('add-tradition-modal').classList.add('hidden');
+            document.getElementById('tradition-detail-modal').classList.add('hidden');
+        };
+
+        window.openTraditionDetail = (trad) => {
+            if (!trad) return;
+            document.getElementById('tradition-modal-title').innerText = trad.title || 'Untitled Tradition';
+            document.getElementById('tradition-modal-author').innerText = `Story shared by ${trad.authorName || 'Anonymous'} on ${trad.timestamp ? new Date(trad.timestamp).toLocaleDateString() : 'Unknown Date'}`;
+            document.getElementById('tradition-modal-description').innerText = trad.description || 'No description provided.';
+            document.getElementById('tradition-modal-image').innerHTML = trad.imageUrl ? `<img src="${trad.imageUrl}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center bg-slate-50 text-slate-200"><i class="fas fa-scroll text-6xl"></i></div>`;
+
+            const adminActions = document.getElementById('tradition-admin-actions');
+            if (currentUser.isAdmin || currentUser.id === trad.authorId) {
+                adminActions.classList.remove('hidden');
+                document.getElementById('tradition-edit-btn').onclick = () => {
+                    closeTraditionModal();
+                    openTraditionModal(trad);
+                };
+                document.getElementById('tradition-delete-btn').onclick = () => handleDeleteTradition(trad.id, trad.title);
+            } else {
+                adminActions.classList.add('hidden');
+            }
+
+            // Interactions
+            setupInteractions('traditions', trad.id, 'tradition');
+
+            document.getElementById('tradition-detail-modal').classList.remove('hidden');
+        };
+
+        window.handleSaveTradition = async () => {
+            const id = document.getElementById('trad-id').value;
+            const btn = document.getElementById('tradition-save-btn');
+            const title = document.getElementById('trad-title').value.trim();
+            const description = document.getElementById('trad-description').value.trim();
+            const photoFile = document.getElementById('trad-photo').files[0];
+
+            if (!title || !description) {
+                alert("Please provide both a title and a story.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-circle-notch animate-spin mr-2"></i> Saving...`;
+
+            try {
+                let imageUrl = "";
+                if (photoFile && navigator.onLine) {
+                    try {
+                        const storageRef = ref(storage, `traditions/${Date.now()}_${photoFile.name}`);
+                        await uploadBytes(storageRef, photoFile);
+                        imageUrl = await getDownloadURL(storageRef);
+                    } catch (storageErr) {
+                        console.warn("Storage upload failed", storageErr);
+                    }
+                }
+
+                const tradData = {
+                    title,
+                    description,
+                    authorId: currentUser.id,
+                    authorName: currentUser.name,
+                    timestamp: Date.now()
+                };
+                if (imageUrl) tradData.imageUrl = imageUrl;
+
+                if (id) {
+                    await updateDoc(doc(db, "traditions", id), tradData);
+                    alert("Tradition updated!");
+                } else {
+                    await addDoc(collection(db, "traditions"), tradData);
+                    alert("Tradition added!");
+                }
+
+                localStorage.removeItem('draft_trad-description');
+                closeTraditionModal();
+            } catch (e) {
+                alert("Error: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Save Tradition";
+            }
+        };
+
+        window.handleDeleteTradition = async (id, title) => {
+            if (!confirm(`Are you sure you want to delete the tradition "${title}"?`)) return;
+            try {
+                await deleteDoc(doc(db, "traditions", id));
+                alert("Tradition deleted.");
+                closeTraditionModal();
+            } catch (e) {
+                alert("Error deleting: " + e.message);
+            }
+        };
+
+        // Family Map Logic
+        let markers = [];
+        async function updateMapMarkers() {
+            if (!map) return;
+            // Clear existing markers
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            // Group members by location
+            const locMap = {};
+            allMembers.forEach(m => {
+                if (m.location) {
+                    const loc = m.location.trim().toLowerCase();
+                    if (!locMap[loc]) locMap[loc] = { originalName: m.location.trim(), members: [] };
+                    locMap[loc].members.push(m);
+                }
+            });
+
+            // Geocode and place markers with Firestore caching
+            for (const cityKey in locMap) {
+                const cityData = locMap[cityKey];
+                try {
+                    // Check Firestore cache first to reduce external API calls
+                    const cacheRef = doc(db, "geocodes", cityKey.replace(/[^a-z0-9]/g, '_'));
+                    const cacheSnap = await getDoc(cacheRef);
+
+                    let lat, lon;
+                    if (cacheSnap.exists()) {
+                        const data = cacheSnap.data();
+                        lat = data.lat;
+                        lon = data.lon;
+                    } else {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cityData.originalName)}`);
+                        const data = await res.json();
+                        if (data && data.length > 0) {
+                            lat = data[0].lat;
+                            lon = data[0].lon;
+                            // Save to cache for future use
+                            await setDoc(cacheRef, {
+                                lat,
+                                lon,
+                                name: cityData.originalName,
+                                timestamp: Date.now()
+                            });
+                        }
+                    }
+
+                    if (lat && lon) {
+                        const membersInCity = cityData.members;
+                        const popupContent = `
+                            <div class="p-2 min-w-[150px]">
+                                <h4 class="font-bold text-indigo-700 border-b pb-1 mb-2">${cityData.originalName}</h4>
+                                <div class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                    ${membersInCity.map(m => `
+                                        <div class="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1 rounded transition" onclick="jumpToProfile('${m.name}')">
+                                            <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-[8px] font-bold overflow-hidden">
+                                                ${m.photoUrl ? `<img src="${m.photoUrl}" class="w-full h-full object-cover">` : m.name.charAt(0)}
+                                            </div>
+                                            <span class="text-xs font-medium">${m.name}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+
+                        const mkr = L.marker([lat, lon]).addTo(map).bindPopup(popupContent);
+                        markers.push(mkr);
+                    }
+                } catch (e) { console.error("Geocode error for " + cityData.originalName, e); }
+            }
+        }
+
+        // Speech to Text & Audio Recording Integration
+        let activeRecognition = null;
+        let recoveryTimeout = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        window.startDictation = async (targetId, lang = 'hi-IN', isRetry = false) => {
+            const target = document.getElementById(targetId);
+            const btn = document.querySelector(`button[onclick*="'${targetId}'"]`);
+            const audioPlaybackDiv = document.getElementById(`audio-playback-${targetId}`);
+            const audioEl = audioPlaybackDiv?.querySelector('audio');
+            if (!btn || !target) return;
+
+            // Handle Manual Stop
+            if (!isRetry && (btn.innerHTML.includes('Stop') || btn.innerHTML.includes('Retrying'))) {
+                if (activeRecognition) {
+                    activeRecognition.wasInterruptedByNetwork = false;
+                    activeRecognition.stop();
+                    activeRecognition = null;
+                }
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+                if (recoveryTimeout) {
+                    clearTimeout(recoveryTimeout);
+                    recoveryTimeout = null;
+                }
+                btn.innerHTML = `<i class="fas fa-microphone mr-2"></i> Dictate (Hindi)`;
+                btn.classList.remove('text-red-600', 'text-amber-600');
+                return;
+            }
+
+            // Cleanup any existing
+            if (activeRecognition) {
+                activeRecognition.wasInterruptedByNetwork = false;
+                activeRecognition.stop();
+                activeRecognition = null;
+            }
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            if (recoveryTimeout) {
+                clearTimeout(recoveryTimeout);
+                recoveryTimeout = null;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Your browser does not support Speech Recognition. Please try Chrome or Edge.");
+                return;
+            }
+
+            // Start Audio Recording
+            try {
+                if (!isRetry) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) audioChunks.push(e.data);
+                    };
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const audioUrl = URL.createObjectURL(audioBlob);
+                        if (audioEl) {
+                            audioEl.src = audioUrl;
+                            audioPlaybackDiv.classList.remove('hidden');
+                        }
+                    };
+                    mediaRecorder.start();
+                }
+            } catch (err) {
+                console.error("Audio record error:", err);
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.targetId = targetId;
+            recognition.wasInterruptedByNetwork = false;
+            recognition.lang = lang;
+            recognition.interimResults = false;
+            recognition.continuous = true;
+            activeRecognition = recognition;
+
+            recognition.onstart = () => {
+                btn.innerHTML = `<i class="fas fa-stop-circle text-red-500 animate-pulse"></i> Stop Listening`;
+                btn.classList.add('text-red-600');
+                btn.classList.remove('text-amber-600');
+            };
+
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+                }
+                if (finalTranscript) {
+                    const currentVal = target.value.trim();
+                    target.value = currentVal ? (currentVal + " " + finalTranscript.trim()) : finalTranscript.trim();
+                    localStorage.setItem(`draft_${targetId}`, target.value);
+                    target.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech Error:", event.error);
+                if (event.error === 'network') {
+                    recognition.wasInterruptedByNetwork = true;
+                    btn.innerHTML = `<i class="fas fa-wifi text-amber-500 animate-bounce"></i> Offline - Retrying...`;
+                    btn.classList.add('text-amber-600');
+
+                    const tryAgain = () => {
+                        if (navigator.onLine) {
+                            startDictation(targetId, lang, true);
+                        } else {
+                            recoveryTimeout = setTimeout(tryAgain, 5000);
+                        }
+                    };
+                    recoveryTimeout = setTimeout(tryAgain, 5000);
+                    window.addEventListener('online', () => {
+                        if (recoveryTimeout) clearTimeout(recoveryTimeout);
+                        tryAgain();
+                    }, { once: true });
+                } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                    alert("Speech recognition error: " + event.error);
+                }
+                if (activeRecognition === recognition) activeRecognition = null;
+                recognition.stop();
+            };
+
+            recognition.onend = () => {
+                if (!recognition.wasInterruptedByNetwork) {
+                    btn.innerHTML = `<i class="fas fa-microphone mr-2"></i> Dictate (Hindi)`;
+                    btn.classList.remove('text-red-600', 'text-amber-600');
+                    if (activeRecognition === recognition) activeRecognition = null;
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+                }
+            };
+
+            recognition.start();
+        };
+
         window.handleLogin = async () => {
-            const phone = document.getElementById('login-phone').value;
+            const phoneInput = document.getElementById('login-phone').value;
             const pwd = document.getElementById('login-pwd').value;
             const errorEl = document.getElementById('login-error');
             const btn = document.getElementById('login-btn');
 
-            if (!phone || !pwd) {
+            if (!phoneInput || !pwd) {
                 errorEl.innerText = "Please fill all fields";
                 errorEl.classList.remove('hidden');
                 return;
@@ -320,23 +1566,46 @@
             btn.innerHTML = `<i class="fas fa-circle-notch animate-spin mr-2"></i> Verifying...`;
 
             try {
-                const q = query(collection(db, "members"), where("phoneNumber", "==", phone));
-                const querySnapshot = await getDocs(q);
+                // Normalize phone number (remove non-digits)
+                const cleanPhone = phoneInput.replace(/\D/g, '');
+                console.log("Attempting login for phone:", cleanPhone);
 
-                if (querySnapshot.empty) throw new Error("Phone number not found");
+                // Try searching with normalized number
+                let q = query(collection(db, "members"), where("phoneNumber", "==", cleanPhone));
+                let querySnapshot = await getDocs(q);
 
-                const userDoc = querySnapshot.docs[0].data();
+                // If not found, try original input
+                if (querySnapshot.empty && cleanPhone !== phoneInput) {
+                    console.log("No match for clean phone, trying original:", phoneInput);
+                    q = query(collection(db, "members"), where("phoneNumber", "==", phoneInput));
+                    querySnapshot = await getDocs(q);
+                }
+
+                if (querySnapshot.empty) {
+                    console.warn("User not found in Firestore for phone:", phoneInput);
+                    throw new Error("No account found with this phone number (" + phoneInput + "). Please ensure your phone number is registered in the directory.");
+                }
+
+                const docSnap = querySnapshot.docs[0];
+                const userDoc = docSnap.data();
+                userDoc.id = docSnap.id;
+                console.log("User found:", userDoc.name);
+
                 const inputHash = await sha256(pwd);
                 const storedHash = userDoc.password;
 
+                // Handle default password "1234" logic
                 if (storedHash ? (inputHash === storedHash) : (pwd === "1234")) {
+                    console.log("Login successful for:", userDoc.name);
                     sessionStorage.setItem('user', JSON.stringify(userDoc));
                     showDashboard(userDoc);
                     closeModal();
                 } else {
-                    throw new Error("Incorrect password");
+                    console.error("Password mismatch for:", userDoc.name);
+                    throw new Error("Incorrect password. Please try again.");
                 }
             } catch (err) {
+                console.error("Login error:", err);
                 errorEl.innerText = err.message;
                 errorEl.classList.remove('hidden');
             } finally {
@@ -346,16 +1615,199 @@
         };
 
         function showDashboard(user) {
+            // Root Admin Override
+            if (user.phoneNumber === "9999999999") user.isAdmin = true;
+
             currentUser = user;
             document.getElementById('hero').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
             document.getElementById('nav-actions').classList.add('hidden');
             document.getElementById('user-profile').classList.remove('hidden');
             document.getElementById('user-name').innerText = user.name;
+
+            const roleEl = document.getElementById('user-role');
+            if (user.isAdmin) {
+                roleEl.innerText = "Administrator";
+                document.getElementById('tab-approvals').classList.remove('hidden');
+                loadApprovals();
+            }
+            else if (user.isEditor) roleEl.innerText = "Editor";
+            else roleEl.innerText = "Family Member";
+
             loadMembers();
             loadDiscussions();
             loadGallery();
         }
+
+        async function loadApprovals() {
+            const updateList = document.getElementById('update-requests');
+            const deleteList = document.getElementById('deletion-requests');
+            const overrideList = document.getElementById('relationship-overrides');
+            if (!updateList || !deleteList || !overrideList) return;
+
+            updateList.innerHTML = `<div class="p-10 text-center col-span-full"><i class="fas fa-circle-notch animate-spin text-indigo-300"></i></div>`;
+            deleteList.innerHTML = `<div class="p-10 text-center col-span-full"><i class="fas fa-circle-notch animate-spin text-indigo-300"></i></div>`;
+            overrideList.innerHTML = `<div class="p-10 text-center col-span-full"><i class="fas fa-circle-notch animate-spin text-indigo-300"></i></div>`;
+
+            try {
+                // Pending Information Updates
+                onSnapshot(query(collection(db, "pending_updates")), (snap) => {
+                    updateList.innerHTML = "";
+                    if (snap.empty) {
+                        updateList.innerHTML = `<div class="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 col-span-full"><p class="text-slate-400 font-medium">No pending information updates.</p></div>`;
+                    }
+                    snap.forEach(docSnap => {
+                        const data = docSnap.data();
+                        const id = docSnap.id;
+                        const card = document.createElement('div');
+                        card.className = "bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6";
+                        card.innerHTML = `
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black">${data.name.charAt(0)}</div>
+                                <div>
+                                    <p class="font-bold text-slate-800">${data.name}</p>
+                                    <p class="text-[10px] text-slate-400 font-bold uppercase">Requested by ${data.requestedByName || 'Member'}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="approveRequest('${id}')" class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs hover:bg-emerald-500 hover:text-white transition">Approve</button>
+                                <button onclick="rejectRequest('${id}')" class="px-4 py-2 bg-red-50 text-red-500 rounded-xl font-bold text-xs hover:bg-red-500 hover:text-white transition">Reject</button>
+                            </div>
+                        `;
+                        updateList.appendChild(card);
+                    });
+                });
+
+                // Pending Deletion Requests
+                onSnapshot(query(collection(db, "deletion_requests"), where("status", "==", "PENDING")), (snap) => {
+                    deleteList.innerHTML = "";
+                    if (snap.empty) {
+                        deleteList.innerHTML = `<div class="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 col-span-full"><p class="text-slate-400 font-medium">No pending deletion requests.</p></div>`;
+                    }
+                    snap.forEach(docSnap => {
+                        const data = docSnap.data();
+                        const id = docSnap.id;
+                        const card = document.createElement('div');
+                        card.className = "bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6";
+                        card.innerHTML = `
+                            <div class="flex-1">
+                                <p class="text-xs font-black text-indigo-600 uppercase tracking-widest mb-1">${data.collectionName.slice(0,-1)} Deletion</p>
+                                <p class="font-bold text-slate-800">${data.title}</p>
+                                <p class="text-sm text-slate-500 italic mt-2">"${data.reason}"</p>
+                                <p class="text-[9px] text-slate-400 mt-2">Requested by ${data.requestedByName}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="approveDeletionRequest('${id}')" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-500 hover:text-white transition">Delete Content</button>
+                                <button onclick="rejectDeletionRequest('${id}')" class="px-4 py-2 bg-slate-50 text-slate-500 rounded-xl font-bold text-xs hover:bg-slate-500 hover:text-white transition">Reject</button>
+                            </div>
+                        `;
+                        deleteList.appendChild(card);
+                    });
+                });
+
+                // Pending Relationship Overrides
+                onSnapshot(query(collection(db, "relationship_overrides"), where("status", "==", "PENDING")), (snap) => {
+                    overrideList.innerHTML = "";
+                    if (snap.empty) {
+                        overrideList.innerHTML = `<div class="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 col-span-full"><p class="text-slate-400 font-medium">No pending relationship overrides.</p></div>`;
+                    }
+                    snap.forEach(docSnap => {
+                        const data = docSnap.data();
+                        const id = docSnap.id;
+                        const card = document.createElement('div');
+                        card.className = "bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6";
+                        card.innerHTML = `
+                            <div class="flex-1">
+                                <p class="text-xs font-black text-indigo-600 uppercase tracking-widest mb-1">Relationship Override</p>
+                                <p class="font-bold text-slate-800">${data.observerName} requests to call ${data.targetName} "${data.relationship}"</p>
+                                <p class="text-[9px] text-slate-400 mt-2">ID: ${id}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="approveOverride('${id}')" class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs hover:bg-emerald-500 hover:text-white transition">Approve</button>
+                                <button onclick="rejectOverride('${id}')" class="px-4 py-2 bg-slate-50 text-slate-500 rounded-xl font-bold text-xs hover:bg-slate-500 hover:text-white transition">Reject</button>
+                            </div>
+                        `;
+                        overrideList.appendChild(card);
+                    });
+                });
+            } catch (e) { console.error("Error loading approvals:", e); }
+        }
+
+        window.approveOverride = async (requestId) => {
+            try {
+                const reqRef = doc(db, "relationship_overrides", requestId);
+                const reqSnap = await getDoc(reqRef);
+                if (reqSnap.exists()) {
+                    const data = reqSnap.data();
+                    const { observerId, targetId, relationship } = data;
+
+                    // Update manualRelationships on target member
+                    const targetRef = doc(db, "members", targetId);
+                    await updateDoc(targetRef, {
+                        [`manualRelationships.${observerId}`]: relationship
+                    });
+
+                    // Update override status
+                    await updateDoc(reqRef, { status: "APPROVED" });
+                    alert("Relationship override approved.");
+                }
+            } catch (e) { alert("Error: " + e.message); }
+        };
+
+        window.rejectOverride = async (requestId) => {
+            try {
+                await updateDoc(doc(db, "relationship_overrides", requestId), { status: "REJECTED" });
+                alert("Override request rejected.");
+            } catch (e) { alert("Error: " + e.message); }
+        };
+
+        window.approveDeletionRequest = async (requestId) => {
+            if (!confirm("Are you sure you want to approve this deletion? The content will be permanently removed.")) return;
+            try {
+                const reqRef = doc(db, "deletion_requests", requestId);
+                const reqSnap = await getDoc(reqRef);
+                if (reqSnap.exists()) {
+                    const { collectionName, docId } = reqSnap.data();
+                    await deleteDoc(doc(db, collectionName, docId));
+                    await updateDoc(reqRef, { status: "APPROVED" });
+                    alert("Content deleted and request approved.");
+                }
+            } catch (e) { alert("Error: " + e.message); }
+        };
+
+        window.rejectDeletionRequest = async (requestId) => {
+            try {
+                await updateDoc(doc(db, "deletion_requests", requestId), { status: "REJECTED" });
+                alert("Deletion request rejected.");
+            } catch (e) { alert("Error: " + e.message); }
+        };
+
+        window.approveRequest = async (id) => {
+            try {
+                const docRef = doc(db, "pending_updates", id);
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const { requestedBy, requestedByName, status, ...cleanData } = data;
+                    cleanData.status = "APPROVED";
+                    await setDoc(doc(db, "members", id), cleanData);
+                    await deleteDoc(docRef);
+                    alert("Update approved and applied to directory.");
+                }
+            } catch (e) {
+                alert("Error approving: " + e.message);
+            }
+        };
+
+        window.rejectRequest = async (id) => {
+            if (!confirm("Are you sure you want to reject this request?")) return;
+            try {
+                await deleteDoc(doc(db, "pending_updates", id));
+                alert("Request rejected.");
+            } catch (e) {
+                alert("Error rejecting: " + e.message);
+            }
+        };
 
         async function loadMembers() {
             if (membersPromise) return membersPromise;
@@ -365,8 +1817,14 @@
                     const q = query(collection(db, "members"));
                     const querySnapshot = await getDocs(q);
                     const members = [];
-                    querySnapshot.forEach(doc => members.push(doc.data()));
-                    allMembers = members;
+                    querySnapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data) {
+                            data.id = doc.id;
+                            members.push(data);
+                        }
+                    });
+                    allMembers = FamilyUtils.populateAllLinks(members, currentUser);
                     renderMembers(allMembers);
                     return allMembers;
                 } catch (e) {
@@ -383,10 +1841,12 @@
             const grid = document.getElementById('member-grid');
             grid.innerHTML = "";
             members.forEach((member) => {
-                const relationship = (currentUser && member.manualRelationships && member.manualRelationships[currentUser.id])
-                    || (currentUser ? FamilyUtils.getRelationship(member, currentUser, allMembers) : null)
-                    || member.relationship
-                    || 'Family Member';
+                let relationship = member.relationship;
+                if (!relationship) {
+                    if (member.isAdmin || member.phoneNumber === "9999999999") relationship = "Administrator";
+                    else if (member.isEditor) relationship = "Editor";
+                    else relationship = "Family Member";
+                }
 
                 const card = document.createElement('div');
                 card.className = "bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:border-indigo-100 transition duration-300 flex flex-col";
@@ -405,6 +1865,7 @@
                         <div class="grid grid-cols-2 gap-2">
                             <p class="flex items-center gap-2"><i class="fas fa-cake-candles text-indigo-300 w-4"></i> ${member.dateOfBirth}</p>
                             ${member.marriageDate ? `<p class="flex items-center gap-2"><i class="fas fa-ring text-pink-300 w-4"></i> ${member.marriageDate}</p>` : ''}
+                            ${member.bereavementDate ? `<p class="flex items-center gap-2 text-slate-400 col-span-2"><i class="fas fa-dove w-4"></i> Passed: ${member.bereavementDate}</p>` : ''}
                         </div>
 
                         ${member.spouseName ? `<p class="flex items-center gap-2"><i class="fas fa-heart text-red-300 w-4"></i> <span class="text-xs">Spouse:</span> <span class="font-semibold text-slate-700">${member.spouseName}</span></p>` : ''}
@@ -414,14 +1875,31 @@
                             ${member.motherName ? `<p class="text-[11px] flex items-center gap-2"><i class="fas fa-user-nurse text-slate-300"></i> Mother: <span class="font-medium text-slate-600">${member.motherName}</span></p>` : ''}
                         </div>
 
-                        <p class="flex items-start gap-2"><i class="fas fa-location-dot text-indigo-300 w-4 mt-1"></i> <span>${member.location || 'Location Not Specified'}${member.address ? `<br><span class="text-[11px] opacity-75">${member.address}</span>` : ''}</span></p>
+                        ${member.immediateFamily ? `<p class="text-[10px] bg-indigo-50/30 p-2 rounded-lg text-indigo-700/70 border border-indigo-50/50">${member.immediateFamily}</p>` : ''}
+
+                        <div class="space-y-1">
+                            <p class="flex items-start gap-2"><i class="fas fa-location-dot text-indigo-300 w-4 mt-1"></i> <span>${member.location || 'Location Not Specified'}${member.address ? `<br><span class="text-[11px] opacity-75">${member.address}</span>` : ''}</span></p>
+                            ${member.email ? `<p class="flex items-center gap-2 text-xs"><i class="fas fa-envelope text-indigo-300 w-4"></i> <span class="truncate">${member.email}</span></p>` : ''}
+                        </div>
                     </div>
 
-                    <div class="flex gap-2 pt-4 border-t border-slate-50 mt-auto">
-                         ${member.phoneNumber ? `<a href="https://wa.me/${member.phoneNumber.replace(/\D/g,'')}" target="_blank" title="WhatsApp" class="w-9 h-9 rounded-xl bg-green-50 text-green-500 flex items-center justify-center hover:bg-green-500 hover:text-white transition"><i class="fab fa-whatsapp"></i></a>` : ''}
-                         ${member.facebookUrl ? `<a href="${member.facebookUrl}" target="_blank" title="Facebook" class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition"><i class="fab fa-facebook-f"></i></a>` : ''}
-                         ${member.instagramUrl ? `<a href="${member.instagramUrl}" target="_blank" title="Instagram" class="w-9 h-9 rounded-xl bg-pink-50 text-pink-500 flex items-center justify-center hover:bg-pink-600 hover:text-white transition"><i class="fab fa-instagram"></i></a>` : ''}
-                         ${member.youtubeUrl ? `<a href="${member.youtubeUrl}" target="_blank" title="YouTube" class="w-9 h-9 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition"><i class="fab fa-youtube"></i></a>` : ''}
+                    <div class="flex gap-2 pt-4 border-t border-slate-50 mt-auto items-center">
+                         <div class="flex gap-1 flex-grow overflow-x-auto scrollbar-hide py-1">
+                            <button onclick="startChat('${member.id}', '${member.name}')" title="Send DM" class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex-shrink-0 flex items-center justify-center hover:bg-indigo-500 hover:text-white transition text-xs"><i class="fas fa-paper-plane"></i></button>
+                            ${member.phoneNumber ? `<a href="https://wa.me/${member.phoneNumber.replace(/\D/g,'')}" target="_blank" title="WhatsApp" class="w-8 h-8 rounded-lg bg-green-50 text-green-500 flex-shrink-0 flex items-center justify-center hover:bg-green-500 hover:text-white transition text-xs"><i class="fab fa-whatsapp"></i></a>` : ''}
+                            ${member.facebookUrl ? `<a href="${member.facebookUrl}" target="_blank" title="Facebook" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex-shrink-0 flex items-center justify-center hover:bg-blue-600 hover:text-white transition text-xs"><i class="fab fa-facebook-f"></i></a>` : ''}
+                            ${member.instagramUrl ? `<a href="${member.instagramUrl}" target="_blank" title="Instagram" class="w-8 h-8 rounded-lg bg-pink-50 text-pink-500 flex-shrink-0 flex items-center justify-center hover:bg-pink-600 hover:text-white transition text-xs"><i class="fab fa-instagram"></i></a>` : ''}
+                            ${member.youtubeUrl ? `<a href="${member.youtubeUrl}" target="_blank" title="YouTube" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex-shrink-0 flex items-center justify-center hover:bg-red-600 hover:text-white transition text-xs"><i class="fab fa-youtube"></i></a>` : ''}
+                         </div>
+
+                         ${(currentUser.isAdmin || currentUser.isEditor) ? `
+                            <button onclick="openEditModal('${member.id}')" title="Edit Member" class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition text-xs"><i class="fas fa-edit"></i></button>
+                            ${currentUser.isAdmin ? `<button onclick="handleDeleteMember('${member.id}', '${member.name}')" title="Delete Member" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition text-xs"><i class="fas fa-trash"></i></button>` : ''}
+                         ` : (member.id === currentUser.id ? `
+                            <button onclick="openEditModal('${member.id}', true)" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition">Request Change</button>
+                         ` : `
+                            <button onclick="openEditModal('${member.id}', false, true)" class="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg hover:bg-slate-200 hover:text-slate-600 transition">View Profile</button>
+                         `)}
                     </div>
                 `;
                 grid.appendChild(card);
@@ -466,262 +1944,354 @@
                     `;
                     list.appendChild(item);
                 });
-                if(querySnapshot.empty) list.innerHTML = "<div class='text-center text-slate-400 py-16 bg-white rounded-[2rem] border-2 border-dashed border-slate-100'><i class='fas fa-comment-slash text-4xl mb-4 opacity-20'></i><p>No active discussions. Post something in the app!</p></div>";
             } catch (e) { console.error(e); }
         }
 
-        async function loadGallery() {
+        // Messaging Logic
+        let activeChannelId = null;
+        window.loadChannels = async () => {
+            const list = document.getElementById('channel-list');
+            list.innerHTML = `<div class="p-10 text-center"><i class="fas fa-circle-notch animate-spin text-indigo-300"></i></div>`;
             try {
-                // Fetching without complex query first to debug visibility
-                const q = query(collection(db, "memories"));
-                const querySnapshot = await getDocs(q);
-                const grid = document.getElementById('gallery-grid');
-                grid.innerHTML = "";
-
-                let memories = [];
-                querySnapshot.forEach(doc => {
-                    const data = doc.data();
-                    if (data.status === "APPROVED" || (currentUser && currentUser.isAdmin)) {
-                        memories.push(data);
-                    }
-                });
-
-                // Sort locally to avoid needing index for now
-                memories.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-                memories.forEach(mem => {
-                    const item = document.createElement('div');
-                    item.className = "aspect-square rounded-[2rem] overflow-hidden bg-slate-100 relative group cursor-pointer shadow-sm";
-                    item.innerHTML = `
-                        <img src="${mem.imageUrl}" class="w-full h-full object-cover transition duration-700 group-hover:scale-110" onerror="this.src='https://via.placeholder.com/400?text=Image+Not+Found'">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-6 translate-y-4 group-hover:translate-y-0">
-                            <p class="text-white text-sm font-bold mb-1 truncate">${mem.caption || 'Family Memory'}</p>
-                            <p class="text-white/60 text-[10px] font-medium">By ${mem.userName || 'Family Member'}</p>
+                const members = await loadMembers();
+                list.innerHTML = "";
+                members.filter(m => m.id !== currentUser.id).forEach(m => {
+                    const el = document.createElement('div');
+                    el.className = "flex items-center gap-4 p-4 rounded-2xl cursor-pointer hover:bg-slate-50 transition group";
+                    el.onclick = () => startChat(m.id, m.name);
+                    el.innerHTML = `
+                        <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs overflow-hidden">
+                            ${m.photoUrl ? `<img src="${m.photoUrl}" class="w-full h-full object-cover">` : m.name.charAt(0)}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-slate-800 text-sm truncate">${m.name}</p>
+                            <p class="text-[10px] text-slate-400 truncate">Family Member</p>
                         </div>
                     `;
-                    grid.appendChild(item);
+                    list.appendChild(el);
                 });
-
-                if(memories.length === 0) grid.innerHTML = "<div class='col-span-full text-center text-slate-400 py-16 bg-white rounded-[2rem] border-2 border-dashed border-slate-100'><i class='fas fa-camera text-4xl mb-4 opacity-20'></i><p>Gallery is empty. Upload your first memory!</p></div>";
-            } catch (e) {
-                console.error("Gallery Error:", e);
-                document.getElementById('gallery-grid').innerHTML = `<p class='text-red-500'>Error loading memories: ${e.message}</p>`;
-            }
-        }
-
-        window.switchTab = (tab) => {
-            ['directory', 'tree', 'discussions', 'gallery'].forEach(t => {
-                const content = document.getElementById(`content-${t}`);
-                const tabBtn = document.getElementById(`tab-${t}`);
-                if (content) content.classList.add('hidden');
-                if (tabBtn) {
-                    tabBtn.classList.remove('tab-active');
-                    tabBtn.classList.add('text-slate-400');
-                }
-            });
-            const activeContent = document.getElementById(`content-${tab}`);
-            const activeTab = document.getElementById(`tab-${tab}`);
-            if (activeContent) activeContent.classList.remove('hidden');
-            if (activeTab) {
-                activeTab.classList.add('tab-active');
-                activeTab.classList.remove('text-slate-400');
-            }
-            if (tab === 'tree') renderFamilyTree();
+            } catch (e) { console.error(e); }
         };
 
-        async function renderFamilyTree() {
-            const container = document.getElementById('family-tree-container');
-            if (!container) return;
-
-            // Clear previous and show loading
-            container.innerHTML = `
-                <div class='text-center p-20'>
-                    <i class='fas fa-circle-notch animate-spin text-indigo-500 text-4xl mb-4'></i>
-                    <p class='text-slate-500 font-medium'>Building Family Tree...</p>
-                </div>`;
-
-            try {
-                // Ensure members are loaded
-                const members = (allMembers && allMembers.length > 0) ? allMembers : await loadMembers();
-
-                if (!members || members.length === 0) {
-                    container.innerHTML = `
-                        <div class='text-center p-20 bg-white rounded-[3rem] border-2 border-dashed border-slate-100 shadow-sm'>
-                            <i class='fas fa-users-slash text-5xl text-slate-200 mb-6'></i>
-                            <h3 class='text-xl font-bold text-slate-800 mb-2'>No Data Available</h3>
-                            <p class='text-slate-400 max-w-xs mx-auto'>Waiting for family members to be synced from the database.</p>
-                            <button onclick="loadMembers().then(renderFamilyTree)" class="mt-8 px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 transition active:scale-95">Retry Sync</button>
-                        </div>`;
-                    return;
-                }
-
-                const tree = buildTreeData(members);
-                if (!tree) {
-                    container.innerHTML = `
-                        <div class='text-center p-20 bg-white rounded-[3rem] border-2 border-dashed border-slate-100 shadow-sm'>
-                            <i class='fas fa-sitemap text-5xl text-slate-200 mb-6'></i>
-                            <h3 class='text-xl font-bold text-slate-800 mb-2'>Root Not Found</h3>
-                            <p class='text-slate-400 max-w-xs mx-auto'>We found ${members.length} members but couldn't determine the family head. Check familyId assignments.</p>
-                        </div>`;
-                    return;
-                }
-
-                const treeHtml = createNodeHtml(tree);
-                if (!treeHtml || treeHtml.trim() === "") {
-                    container.innerHTML = `
-                        <div class='text-center p-20 bg-white rounded-[3rem] border-2 border-dashed border-slate-100 shadow-sm'>
-                            <i class='fas fa-eye-slash text-5xl text-slate-200 mb-6'></i>
-                            <h3 class='text-xl font-bold text-slate-800 mb-2'>Rendering Issue</h3>
-                            <p class='text-slate-400 max-w-xs mx-auto'>The tree was built successfully but resulted in no visible content.</p>
-                        </div>`;
-                    return;
-                }
-
-                container.innerHTML = `<div class="py-12 flex justify-center">${treeHtml}</div>`;
-                resetZoom();
-            } catch (err) {
-                console.error("Tree Render Error:", err);
-                container.innerHTML = `
-                    <div class='text-center p-12 text-red-500 bg-red-50 rounded-[2rem] border border-red-100'>
-                        <i class='fas fa-exclamation-triangle mb-4 text-3xl'></i>
-                        <p class='font-bold text-lg'>Tree Display Error</p>
-                        <p class='text-sm mt-2 opacity-80'>${err.message}</p>
-                        <button onclick="renderFamilyTree()" class="mt-6 px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-md">Retry Rendering</button>
-                    </div>`;
-            }
-        }
-
-        function buildTreeData(members) {
-            if (!members || members.length === 0) return null;
-
-            const map = {};
-            // 1. Group members into nodes (main + spouse)
-            members.forEach(m => {
-                let fid = m.familyId ? m.familyId.toString().trim().toUpperCase() : null;
-                if (!fid) return;
-
-                // Logic: "0" is spouse of "P". "A10", "B10" etc are spouses of "A1", "B1".
-                let isSpouse = (fid === "0" || (fid.length > 1 && fid.endsWith("0")));
-                let baseId = isSpouse ? (fid === "0" ? "P" : fid.slice(0, -1)) : fid;
-
-                if (!map[baseId]) map[baseId] = { id: baseId, main: null, spouse: null, children: [] };
-                if (isSpouse) map[baseId].spouse = m;
-                else map[baseId].main = m;
-            });
-
-            const roots = [];
-            // 2. Connect children to parents
-            Object.keys(map).forEach(id => {
-                const node = map[id];
-                const parentId = FamilyUtils.getParentBase(id);
-                if (parentId && map[parentId]) {
-                    if (!map[parentId].children.some(c => c.id === id)) {
-                        map[parentId].children.push(node);
-                    }
-                } else {
-                    roots.push(node);
-                }
-            });
-
-            if (roots.length === 0) return null;
-
-            // 3. Sort roots: "P" first, then alphabetically
-            roots.sort((a, b) => {
-                if (a.id === "P") return -1;
-                if (b.id === "P") return 1;
-                return a.id.localeCompare(b.id);
-            });
-
-            // 4. Wrap multiple roots in a virtual root
-            if (roots.length > 1) {
-                return { id: "VIRTUAL_ROOT", main: null, spouse: null, children: roots };
-            }
-            return roots[0];
-        }
-
-        function createNodeHtml(nodeData) {
-            if (!nodeData) return "";
-            const m = nodeData.main;
-            const s = nodeData.spouse;
-            const hasChildren = nodeData.children && nodeData.children.length > 0;
-
-            if (nodeData.id === "VIRTUAL_ROOT") {
-                return `
-                <div class="flex flex-nowrap justify-center items-start relative">
-                    ${nodeData.children.map((child, idx) => {
-                        const isFirst = idx === 0;
-                        const isLast = idx === nodeData.children.length - 1;
-                        const hasSiblings = nodeData.children.length > 1;
-                        return `
-                        <div class="relative px-1">
-                            ${hasSiblings ? `
-                                <div class="absolute top-0 h-[1px] bg-slate-200
-                                    ${isFirst ? 'left-1/2 right-0' : isLast ? 'left-0 right-1/2' : 'left-0 right-0'}">
-                                </div>
-                            ` : ''}
-                            ${createNodeHtml(child)}
-                        </div>`;
-                    }).join('')}
-                </div>`;
-            }
-
-            if (!m && !s && !hasChildren) return "";
-
-            let html = `<div class="flex flex-col items-center">
-                <div class="flex items-center gap-0.5 mb-1 relative">
-                    ${m ? createMemberNode(m) : ( (s || hasChildren) ? `<div class="w-8 h-7 border border-dashed border-slate-100 rounded bg-slate-50/20"></div>` : '' )}
-                    ${(m && s) ? `<div class="w-1 h-[1px] bg-slate-200"></div>` : ''}
-                    ${s ? createMemberNode(s) : ''}
-                </div>`;
-
-            if (hasChildren) {
-                const sortedChildren = [...nodeData.children].sort((a, b) => a.id.localeCompare(b.id));
-                html += `
-                <div class="flex flex-nowrap justify-center items-start relative pt-1.5">
-                    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[1px] h-1.5 bg-slate-200"></div>
-                    ${sortedChildren.map((child, idx) => {
-                        const isFirst = idx === 0;
-                        const isLast = idx === sortedChildren.length - 1;
-                        const hasSiblings = sortedChildren.length > 1;
-                        return `
-                        <div class="relative px-1">
-                            ${hasSiblings ? `<div class="absolute top-0 h-[1px] bg-slate-200 ${isFirst ? 'left-1/2 right-0' : isLast ? 'left-0 right-1/2' : 'left-0 right-0'}"></div>` : ''}
-                            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[1px] h-1.5 bg-slate-200"></div>
-                            ${createNodeHtml(child)}
-                        </div>`;
-                    }).join('')}
-                </div>`;
-            }
-            html += `</div>`;
-            return html;
-        }
-
-        function createMemberNode(member) {
-            if (!member) return "";
-            const fid = member.familyId ? member.familyId.toString().toUpperCase() : "";
-            const isSpouse = (fid === "0" || fid.endsWith("0"));
-            const themeColor = isSpouse ? "pink" : "indigo";
-
-            return `
-                <div id="node-${fid}" onclick="jumpToProfile('${member.name}')"
-                     class="w-8 bg-white p-0.5 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border-[0.5px] border-slate-100 flex flex-col items-center cursor-pointer hover:border-${themeColor}-400 transition-all duration-200">
-                    <div class="w-4 h-4 rounded-sm bg-${themeColor}-50 mb-0.5 overflow-hidden ring-[0.5px] ring-white flex-shrink-0">
-                        ${member.photoUrl ?
-                            `<img src="${member.photoUrl}" class="w-full h-full object-cover">` :
-                            `<div class="flex items-center justify-center h-full text-${themeColor}-200 font-bold text-[5px]">${member.name.charAt(0)}</div>`
-                        }
-                    </div>
-                    <p class="text-[3.5px] font-bold text-slate-800 text-center leading-none truncate w-full px-0.5">${member.name}</p>
+        window.startChat = (targetId, targetName) => {
+            switchTab('messaging');
+            activeChannelId = [currentUser.id, targetId].sort().join('_');
+            document.getElementById('chat-header').innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[10px]">${targetName.charAt(0)}</div>
+                    <p class="font-bold text-slate-800">${targetName}</p>
                 </div>
             `;
+            document.getElementById('message-input-area').classList.remove('hidden');
+            listenToMessages(activeChannelId);
+        };
+
+        let messageUnsubscribe = null;
+        function listenToMessages(channelId) {
+            if (messageUnsubscribe) messageUnsubscribe();
+            const q = query(collection(db, "messages"), where("channelId", "==", channelId), orderBy("timestamp", "asc"));
+            messageUnsubscribe = onSnapshot(q, (snapshot) => {
+                const flow = document.getElementById('message-flow');
+                flow.innerHTML = "";
+                snapshot.forEach(doc => {
+                    const msg = doc.data();
+                    const isMine = msg.senderId === currentUser.id;
+                    const div = document.createElement('div');
+                    div.className = `flex ${isMine ? 'justify-end' : 'justify-start'}`;
+                    div.innerHTML = `
+                        <div class="max-w-[70%] ${isMine ? 'bg-indigo-600 text-white rounded-t-2xl rounded-l-2xl' : 'bg-white text-slate-700 rounded-t-2xl rounded-r-2xl border border-slate-100'} p-4 shadow-sm">
+                            <p class="text-sm">${msg.text}</p>
+                            <p class="text-[9px] mt-2 opacity-60 text-right">${new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                        </div>
+                    `;
+                    flow.appendChild(div);
+                });
+                flow.scrollTo(0, flow.scrollHeight);
+            });
         }
 
-        window.locateMe = () => {
-            if (!currentUser || !currentUser.familyId) {
-                alert("Please login to use Locate Me");
-                return;
-            }
-            const fid = currentUser.familyId.toString().toUpperCase();
+        window.sendMessage = async () => {
+            const input = document.getElementById('msg-input');
+            const text = input.value.trim();
+            if (!text || !activeChannelId) return;
+            input.value = "";
+            try {
+                await setDoc(doc(collection(db, "messages")), {
+                    channelId: activeChannelId,
+                    senderId: currentUser.id,
+                    text: text,
+                    timestamp: Date.now()
+                });
+            } catch (e) { console.error(e); }
+        };
+
+        // Gallery Logic
+        async function loadGallery() {
+            const grid = document.getElementById('gallery-grid');
+            grid.innerHTML = `<div class="col-span-full py-20 text-center"><i class="fas fa-circle-notch animate-spin text-indigo-300 text-3xl"></i></div>`;
+            try {
+                const q = query(collection(db, "memories"), orderBy("timestamp", "desc"));
+                const querySnapshot = await getDocs(q);
+                grid.innerHTML = "";
+                querySnapshot.forEach(docSnap => {
+                    const photo = docSnap.data();
+                    photo.id = docSnap.id;
+                    const el = document.createElement('div');
+                    el.className = "aspect-square rounded-[2rem] overflow-hidden bg-slate-100 cursor-pointer hover:shadow-xl transition-all duration-500 hover:-translate-y-2 group relative";
+                    el.onclick = () => openGalleryModal(photo);
+                    el.innerHTML = `
+                        <img src="${photo.imageUrl || photo.url}" class="w-full h-full object-cover group-hover:scale-110 transition duration-700">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-6 flex flex-col justify-end">
+                            <p class="text-white text-xs font-bold truncate">${photo.caption || 'Family Memory'}</p>
+                            <div class="flex items-center gap-3 mt-2">
+                                <span class="text-white/80 text-[10px] flex items-center gap-1"><i class="fas fa-heart"></i> ${photo.reactions ? Object.values(photo.reactions).flat().length : (photo.likes ? photo.likes.length : 0)}</span>
+                                <span class="text-white/80 text-[10px] flex items-center gap-1"><i class="fas fa-comment"></i> ${photo.comments ? photo.comments.length : 0}</span>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(el);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        let photoUnsub = null;
+        window.openGalleryModal = (photo) => {
+            const modal = document.getElementById('gallery-modal');
+            const img = document.getElementById('modal-img');
+            const author = document.getElementById('modal-author');
+            const initial = document.getElementById('author-initial');
+            const date = document.getElementById('modal-date');
+            const caption = document.getElementById('modal-caption');
+
+            img.src = photo.imageUrl || photo.url;
+            author.innerText = photo.userName || "Family Member";
+            initial.innerText = (photo.userName || "F").charAt(0);
+            date.innerText = new Date(photo.timestamp).toLocaleDateString();
+            caption.innerText = photo.caption || "";
+
+            // Set up real-time photo state (likes/comments)
+            if (photoUnsub) photoUnsub();
+            photoUnsub = onSnapshot(doc(db, "memories", photo.id), (snap) => {
+                const data = snap.data();
+                if (!data) return;
+
+                const likes = data.likes || [];
+                const comments = data.comments || [];
+
+                document.getElementById('like-count').innerText = likes.length;
+                document.getElementById('comment-count').innerText = comments.length;
+
+                const likeBtn = document.getElementById('like-btn');
+                const isLiked = likes.includes(currentUser.id);
+                likeBtn.innerHTML = `
+                    <i class="${isLiked ? 'fas text-pink-500' : 'far'} fa-heart text-xl group-hover:scale-125 transition"></i>
+                    <span class="font-bold text-sm">${likes.length}</span>
+                `;
+                likeBtn.onclick = () => handleLike(photo.id, isLiked);
+
+                const commentList = document.getElementById('modal-comments');
+                commentList.innerHTML = comments.map(c => `
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 shrink-0">${c.userName.charAt(0)}</div>
+                        <div class="flex-1">
+                            <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                <p class="text-xs font-black text-indigo-600 mb-1">${c.userName}</p>
+                                <p class="text-sm text-slate-600 leading-relaxed">${c.text}</p>
+                            </div>
+                            <p class="text-[9px] text-slate-300 mt-1 ml-2">${new Date(c.timestamp).toLocaleTimeString()}</p>
+                        </div>
+                    </div>
+                `).join('');
+
+                document.getElementById('submit-comment').onclick = () => handleComment(photo.id);
+            });
+
+            modal.classList.remove('hidden');
+        };
+
+        window.closeGalleryModal = () => {
+            if (photoUnsub) photoUnsub();
+            document.getElementById('gallery-modal').classList.add('hidden');
+        };
+
+        async function handleLike(photoId, isLiked) {
+            const photoRef = doc(db, "memories", photoId);
+            await updateDoc(photoRef, {
+                likes: isLiked ? arrayRemove(currentUser.id) : arrayUnion(currentUser.id)
+            });
+        }
+
+        async function handleComment(photoId) {
+            const input = document.getElementById('comment-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = "";
+
+            const photoRef = doc(db, "memories", photoId);
+            await updateDoc(photoRef, {
+                comments: arrayUnion({
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    text: text,
+                    timestamp: Date.now()
+                })
+            });
+        }
+
+        // Family Tree Rendering Logic
+        function renderTree() {
+            const wrapper = document.getElementById('tree-wrapper');
+            wrapper.innerHTML = "";
+
+            const members = allMembers.filter(m => m.familyId).sort((a, b) => a.familyId.localeCompare(b.familyId));
+            if (members.length === 0) return;
+
+            const vGap = 280;
+            const hGap = 180;
+            const nodeWidth = 140;
+
+            const positions = {};
+            const gens = {};
+            members.forEach(m => {
+                const tBase = m.familyId.endsWith('0') ? m.familyId.slice(0, -1) : m.familyId;
+                const depth = tBase === 'P' ? 0 : tBase.length;
+                if (!gens[depth]) gens[depth] = [];
+                gens[depth].push(m);
+            });
+
+            // SVG Layer
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("class", "absolute top-0 left-0 w-full h-full pointer-events-none");
+            svg.style.minWidth = "10000px";
+            svg.style.minHeight = "10000px";
+            wrapper.appendChild(svg);
+
+            Object.keys(gens).sort((a,b) => a-b).forEach(depth => {
+                const levelMembers = gens[depth];
+                let currentX = 100;
+
+                levelMembers.forEach((m) => {
+                    if (positions[m.familyId]) return; // Already rendered as a spouse pair
+
+                    const spouse = FamilyUtils.findSpouse(m, members);
+                    const hasSpouse = spouse && levelMembers.includes(spouse);
+
+                    const tBase = m.familyId.endsWith('0') ? m.familyId.slice(0, -1) : m.familyId;
+                    const parentId = FamilyUtils.getParentBase(tBase);
+
+                    // Parent might be the 0-suffix (spouse) if they are the connection point
+                    let parentPos = null;
+                    if (parentId) {
+                        parentPos = positions[parentId] || positions[parentId + '0'];
+                    }
+
+                    let x;
+                    if (parentPos) {
+                        const siblings = levelMembers.filter(s => {
+                            const sBase = s.familyId.endsWith('0') ? s.familyId.slice(0, -1) : s.familyId;
+                            return FamilyUtils.getParentBase(sBase) === parentId && !s.familyId.endsWith('0');
+                        });
+                        const sibIdx = siblings.indexOf(m.familyId.endsWith('0') ? spouse : m);
+                        const offset = (sibIdx - (siblings.length - 1) / 2) * (hGap * 2.5);
+                        x = parentPos.x + offset;
+                    } else {
+                        x = currentX;
+                    }
+
+                    // Strict anti-overlap
+                    while (Object.values(positions).some(p => p.y === depth * vGap && Math.abs(p.x - x) < (hasSpouse ? hGap * 3 : hGap * 1.8))) {
+                        x += hGap;
+                    }
+
+                    const y = depth * vGap;
+                    positions[m.familyId] = { x, y };
+                    renderNode(m, x, y, wrapper);
+
+                    if (hasSpouse) {
+                        const sx = x + hGap;
+                        positions[spouse.familyId] = { x: sx, y };
+                        renderNode(spouse, sx, y, wrapper);
+                        drawSpouseLine(x, sx, y, svg);
+                        currentX = sx + hGap * 2.5;
+                    } else {
+                        currentX = x + hGap * 2.5;
+                    }
+
+                    if (parentId && parentPos) {
+                        // Connection point: midpoint between parents if both exist
+                        const actualParentId = positions[parentId] ? parentId : parentId + '0';
+                        const actualParentPos = positions[actualParentId];
+                        const spouseOfParent = FamilyUtils.findSpouse({familyId: actualParentId}, members);
+
+                        let startX = actualParentPos.x + 70;
+                        if (spouseOfParent && positions[spouseOfParent.familyId]) {
+                            const spPos = positions[spouseOfParent.familyId];
+                            startX = (actualParentPos.x + spPos.x + 140) / 2;
+                        }
+
+                        drawParentLine(startX, actualParentPos.y + 110, x + 70, y, svg);
+                    }
+                });
+            });
+
+            updateTreeTransform();
+        }
+
+        function renderNode(m, x, y, container) {
+            const node = document.createElement('div');
+            node.id = `node-${m.familyId}`;
+            node.className = "tree-node absolute bg-white p-4 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col items-center text-center transition-all hover:shadow-2xl hover:border-indigo-400 cursor-pointer z-10";
+            node.style.left = `${x}px`;
+            node.style.top = `${y}px`;
+            node.style.width = `140px`;
+
+            const rel = m.relationship || "Family";
+            const isYou = rel === "You";
+            const relColor = isYou ? "bg-indigo-600 text-white" : "bg-indigo-50 text-indigo-500";
+
+            node.innerHTML = `
+                <div class="relative mb-3">
+                    <div class="w-16 h-16 rounded-full bg-slate-50 overflow-hidden ring-4 ${isYou ? 'ring-indigo-100' : 'ring-white'} shadow-md">
+                        ${m.photoUrl ? `<img src="${m.photoUrl}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-indigo-200 font-bold text-2xl">${m.name.charAt(0)}</div>`}
+                    </div>
+                    <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm ${relColor}">
+                        ${rel}
+                    </div>
+                </div>
+                <p class="text-[11px] font-black text-slate-800 leading-tight mb-0.5 px-1 truncate w-full">${m.name}</p>
+                <p class="text-[7px] font-bold text-slate-300 uppercase tracking-tighter">${m.familyId}</p>
+            `;
+            node.onclick = () => openEditModal(m.id, false, true);
+            container.appendChild(node);
+        }
+
+        function drawSpouseLine(x1, x2, y, svg) {
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const py = y + 40;
+            const d = `M ${x1 + 140} ${py} L ${x2} ${py}`;
+            path.setAttribute("d", d);
+            path.setAttribute("stroke", "#fda4af");
+            path.setAttribute("stroke-width", "3");
+            path.setAttribute("stroke-dasharray", "4 2");
+            path.setAttribute("fill", "none");
+            svg.appendChild(path);
+        }
+
+        function drawParentLine(startX, startY, endX, endY, svg) {
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            const midY = startY + (endY - startY) / 2;
+            const d = `M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`;
+            path.setAttribute("d", d);
+            path.setAttribute("stroke", "#cbd5e1");
+            path.setAttribute("stroke-width", "2");
+            path.setAttribute("fill", "none");
+            svg.appendChild(path);
+        }
+
+        window.jumpToMyNode = () => {
+            const fid = currentUser.familyId;
+            if (!fid) return;
+            switchTab('tree');
             const node = document.getElementById(`node-${fid}`);
             if (node) {
                 // Increase zoom if too small to see
@@ -807,6 +2377,602 @@
             const filtered = allMembers.filter(m => m.name.toLowerCase().includes(queryText) || (m.relationship && m.relationship.toLowerCase().includes(queryText)));
             renderMembers(filtered);
         });
+
+        window.openEditModal = (memberId, isRequest = false, isReadOnly = false) => {
+            const member = allMembers.find(m => m.id === memberId);
+            if (!member) return;
+
+            // Reset photo input and preview
+            const photoInput = document.getElementById('edit-photo-input');
+            if (photoInput) {
+                photoInput.value = "";
+                photoInput.classList.toggle('hidden', isReadOnly);
+            }
+
+            const preview = document.getElementById('edit-photo-preview');
+            if (preview) {
+                if (member.photoUrl) {
+                    preview.innerHTML = `<img src="${member.photoUrl}" class="w-full h-full object-cover">`;
+                } else {
+                    preview.innerHTML = `<i class="fas fa-user text-2xl"></i>`;
+                }
+            }
+
+            document.getElementById('edit-id').value = member.id;
+            document.getElementById('edit-name').value = member.name || '';
+            document.getElementById('edit-familyId').value = member.familyId || '';
+            document.getElementById('edit-gender').value = member.gender || 'Male';
+            document.getElementById('edit-dob').value = member.dateOfBirth || '';
+            document.getElementById('edit-phone').value = member.phoneNumber || '';
+            document.getElementById('edit-email').value = member.email || '';
+            document.getElementById('edit-marriage').value = member.marriageDate || '';
+            document.getElementById('edit-bereavement').value = member.bereavementDate || '';
+            document.getElementById('edit-location').value = member.location || '';
+            document.getElementById('edit-facebook').value = member.facebookUrl || '';
+            document.getElementById('edit-instagram').value = member.instagramUrl || '';
+            document.getElementById('edit-youtube').value = member.youtubeUrl || '';
+            document.getElementById('edit-address').value = member.address || '';
+
+            const title = document.getElementById('edit-modal-title');
+            const subtitle = document.getElementById('edit-modal-subtitle');
+            const saveBtn = document.getElementById('save-btn');
+
+            // Disable/Enable fields based on isReadOnly
+            const inputs = document.getElementById('edit-form').querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.id !== 'edit-id') {
+                    input.disabled = isReadOnly;
+                }
+            });
+
+            if (isReadOnly) {
+                title.innerText = "View Profile Details";
+                subtitle.innerText = "Viewing information for " + member.name;
+                saveBtn.classList.add('hidden');
+            } else {
+                saveBtn.classList.remove('hidden');
+                if (isRequest) {
+                    title.innerText = "Request Information Change";
+                    subtitle.innerText = "Your request will be reviewed by a family administrator.";
+                    saveBtn.innerText = "Submit Request";
+                    saveBtn.onclick = () => handleSaveMember(false);
+                } else {
+                    title.innerText = "Edit Member Details";
+                    subtitle.innerText = "Directly update member information in the database.";
+                    saveBtn.innerText = "Apply Changes";
+                    saveBtn.onclick = () => handleSaveMember(true);
+                }
+            }
+
+            document.getElementById('edit-modal').classList.remove('hidden');
+        };
+
+        window.closeEditModal = () => document.getElementById('edit-modal').classList.add('hidden');
+
+        window.handleSaveMember = async (isApproved) => {
+            const id = document.getElementById('edit-id').value;
+            const btn = document.getElementById('save-btn');
+            const originalMember = allMembers.find(m => m.id === id);
+
+            const photoInput = document.getElementById('edit-photo-input');
+            const photoFile = photoInput ? photoInput.files[0] : null;
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-circle-notch animate-spin mr-2"></i> Saving...`;
+
+            try {
+                let photoUrl = originalMember.photoUrl || null;
+
+                if (photoFile) {
+                    btn.innerHTML = `<i class="fas fa-cloud-upload-alt animate-bounce mr-2"></i> Uploading Photo...`;
+                    const storageRef = ref(storage, `profile_photos/${id}`);
+                    await uploadBytes(storageRef, photoFile);
+                    photoUrl = await getDownloadURL(storageRef);
+                }
+
+                const updatedData = {
+                    ...originalMember,
+                    name: document.getElementById('edit-name').value,
+                    familyId: document.getElementById('edit-familyId').value.toUpperCase(),
+                    gender: document.getElementById('edit-gender').value,
+                    dateOfBirth: document.getElementById('edit-dob').value,
+                    phoneNumber: document.getElementById('edit-phone').value,
+                    email: document.getElementById('edit-email').value,
+                    marriageDate: document.getElementById('edit-marriage').value,
+                    bereavementDate: document.getElementById('edit-bereavement').value,
+                    location: document.getElementById('edit-location').value,
+                    facebookUrl: document.getElementById('edit-facebook').value,
+                    instagramUrl: document.getElementById('edit-instagram').value,
+                    youtubeUrl: document.getElementById('edit-youtube').value,
+                    address: document.getElementById('edit-address').value,
+                    photoUrl: photoUrl,
+                    status: isApproved ? "APPROVED" : "PENDING"
+                };
+
+                if (!isApproved) {
+                    updatedData.requestedBy = currentUser.id;
+                    updatedData.requestedByName = currentUser.name;
+                }
+
+                // FIX: Remove UI-only/calculated fields and handle undefineds
+                const {
+                    relationship,
+                    spouseName,
+                    fatherName,
+                    motherName,
+                    immediateFamily,
+                    ...dataToSave
+                } = updatedData;
+
+                // Scrub undefined values to prevent Firestore crashes
+                Object.keys(dataToSave).forEach(key => {
+                    if (dataToSave[key] === undefined) {
+                        dataToSave[key] = null;
+                    }
+                });
+
+                const collectionName = isApproved ? "members" : "pending_updates";
+                await setDoc(doc(db, collectionName, id), dataToSave);
+
+                alert(isApproved ? "Member updated successfully!" : "Change request submitted for review.");
+                closeEditModal();
+                membersPromise = null; // Force reload
+                loadMembers();
+            } catch (err) {
+                console.error(err);
+                alert("Error saving: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = isApproved ? "Apply Changes" : "Submit Request";
+            }
+        };
+
+        // Photo preview listener
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.id === 'edit-photo-input') {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('edit-photo-preview').innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+                    }
+                    reader.readAsDataURL(file);
+                }
+            }
+        });
+
+        window.handleDeleteMember = async (id, name) => {
+            if (!confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
+            try {
+                await deleteDoc(doc(db, "members", id));
+                alert("Member deleted.");
+                membersPromise = null;
+                loadMembers();
+            } catch (err) {
+                alert("Error deleting: " + err.message);
+            }
+        };
+
+        window.openRecipeModal = (rec = null) => {
+            const modal = document.getElementById('add-recipe-modal');
+            const titleText = document.getElementById('recipe-modal-title-text');
+            const saveBtn = document.getElementById('recipe-save-btn');
+
+            if (rec) {
+                // Edit mode
+                titleText.innerText = "Edit Family Recipe";
+                saveBtn.innerText = "Update Recipe";
+                document.getElementById('rec-id').value = rec.id;
+                document.getElementById('rec-title').value = rec.title || '';
+                document.getElementById('rec-category').value = rec.category || 'Main Dish';
+                document.getElementById('rec-ingredients').value = (rec.ingredients || []).join('\n');
+                document.getElementById('rec-steps').value = (rec.steps || []).join('\n');
+            } else {
+                // Add mode
+                titleText.innerText = "Share Family Recipe";
+                saveBtn.innerText = "Save Recipe";
+                document.getElementById('rec-id').value = "";
+                document.getElementById('rec-title').value = "";
+                document.getElementById('rec-category').value = "Main Dish";
+                const d1 = localStorage.getItem('draft_rec-ingredients');
+                const d2 = localStorage.getItem('draft_rec-steps');
+                document.getElementById('rec-ingredients').value = d1 || "";
+                document.getElementById('rec-steps').value = d2 || "";
+            }
+            modal.classList.remove('hidden');
+        };
+
+        window.closeRecipeModal = () => {
+            document.getElementById('add-recipe-modal').classList.add('hidden');
+            document.getElementById('recipe-modal').classList.add('hidden');
+        };
+
+        window.openRecipeDetail = (rec) => {
+            document.getElementById('recipe-modal-title').innerText = rec.title;
+            document.getElementById('recipe-modal-author').innerText = `Contributed by ${rec.authorName}`;
+            document.getElementById('recipe-modal-image').innerHTML = `<img src="${rec.imageUrl || 'https://images.unsplash.com/photo-1495195129352-aec325a55b65?auto=format&fit=crop&q=80&w=400'}" class="w-full h-full object-cover">`;
+
+            const ingList = document.getElementById('recipe-modal-ingredients');
+            ingList.innerHTML = (rec.ingredients || []).map(i => `<li class="flex items-center gap-3"><i class="fas fa-check-circle text-emerald-400 text-sm"></i> ${i}</li>`).join('');
+
+            const stepList = document.getElementById('recipe-modal-steps');
+            stepList.innerHTML = (rec.steps || []).map((s, idx) => `
+                <div class="flex gap-4">
+                    <span class="w-6 h-6 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-[10px] font-black shrink-0">${idx+1}</span>
+                    <p class="text-sm pt-0.5">${s}</p>
+                </div>
+            `).join('');
+
+            const adminActions = document.getElementById('recipe-admin-actions');
+            const editBtn = document.getElementById('recipe-edit-btn');
+            const deleteBtn = document.getElementById('recipe-delete-btn');
+            const reqDeleteBtn = document.getElementById('recipe-request-delete-btn');
+
+            adminActions.classList.remove('hidden');
+            if (currentUser.isAdmin || currentUser.id === rec.authorId) {
+                editBtn.classList.remove('hidden');
+                deleteBtn.classList.remove('hidden');
+                reqDeleteBtn.classList.add('hidden');
+                editBtn.onclick = () => { closeRecipeModal(); openRecipeModal(rec); };
+                deleteBtn.onclick = () => handleDeleteRecipe(rec.id, rec.title);
+            } else {
+                editBtn.classList.add('hidden');
+                deleteBtn.classList.add('hidden');
+                reqDeleteBtn.classList.remove('hidden');
+                reqDeleteBtn.onclick = () => handleRequestDeletion('recipes', rec.id, rec.title);
+            }
+
+            // Interactions (Likes & Comments)
+            setupInteractions('recipes', rec.id, 'recipe');
+
+            document.getElementById('recipe-modal').classList.remove('hidden');
+        };
+
+        window.openTraditionDetail = (trad) => {
+            if (!trad) return;
+            document.getElementById('tradition-modal-title').innerText = trad.title || 'Untitled Tradition';
+            document.getElementById('tradition-modal-author').innerText = `Story shared by ${trad.authorName || 'Anonymous'} on ${trad.timestamp ? new Date(trad.timestamp).toLocaleDateString() : 'Unknown Date'}`;
+            document.getElementById('tradition-modal-description').innerText = trad.description || 'No description provided.';
+            document.getElementById('tradition-modal-image').innerHTML = trad.imageUrl ? `<img src="${trad.imageUrl}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center bg-slate-50 text-slate-200"><i class="fas fa-scroll text-6xl"></i></div>`;
+
+            const adminActions = document.getElementById('tradition-admin-actions');
+            const editBtn = document.getElementById('tradition-edit-btn');
+            const deleteBtn = document.getElementById('tradition-delete-btn');
+            const reqDeleteBtn = document.getElementById('tradition-request-delete-btn');
+
+            adminActions.classList.remove('hidden');
+            if (currentUser.isAdmin || currentUser.id === trad.authorId) {
+                editBtn.classList.remove('hidden');
+                deleteBtn.classList.remove('hidden');
+                reqDeleteBtn.classList.add('hidden');
+                editBtn.onclick = () => { closeTraditionModal(); openTraditionModal(trad); };
+                deleteBtn.onclick = () => handleDeleteTradition(trad.id, trad.title);
+            } else {
+                editBtn.classList.add('hidden');
+                deleteBtn.classList.add('hidden');
+                reqDeleteBtn.classList.remove('hidden');
+                reqDeleteBtn.onclick = () => handleRequestDeletion('traditions', trad.id, trad.title);
+            }
+
+            // Interactions
+            setupInteractions('traditions', trad.id, 'tradition');
+
+            document.getElementById('tradition-detail-modal').classList.remove('hidden');
+        };
+
+        window.handleRequestDeletion = async (collectionName, docId, title) => {
+            const reason = prompt(`Why should this ${collectionName.slice(0,-1)} ("${title}") be deleted?`);
+            if (!reason) return;
+
+            try {
+                await addDoc(collection(db, "deletion_requests"), {
+                    collectionName,
+                    docId,
+                    title,
+                    reason,
+                    requestedBy: currentUser.id,
+                    requestedByName: currentUser.name,
+                    timestamp: Date.now(),
+                    status: "PENDING"
+                });
+                alert("Deletion request submitted for admin review.");
+            } catch (e) {
+                alert("Error submitting request: " + e.message);
+            }
+        };
+
+        window.handleDeleteRecipe = async (id, title) => {
+            if (!confirm(`Are you sure you want to delete the recipe "${title}"?`)) return;
+            try {
+                await deleteDoc(doc(db, "recipes", id));
+                alert("Recipe deleted.");
+                closeRecipeModal();
+            } catch (e) {
+                alert("Error deleting: " + e.message);
+            }
+        };
+
+        function setupInteractions(collectionName, docId, prefix) {
+            const likeBtn = document.getElementById(`${prefix}-like-btn`);
+            const likeCount = document.getElementById(`${prefix}-like-count`);
+            const commentCount = document.getElementById(`${prefix}-comment-count`);
+            const commentsList = document.getElementById(`${prefix}-comments-list`);
+            const commentInput = document.getElementById(`${prefix}-comment-input`);
+            const commentSubmit = document.getElementById(`${prefix}-comment-submit`);
+
+            // Realtime listener for the document (for likes)
+            onSnapshot(doc(db, collectionName, docId), (snap) => {
+                if (!snap.exists()) return;
+                const data = snap.data();
+                const reactions = data.reactions || {};
+                const likes = reactions['❤️'] || [];
+                likeCount.innerText = likes.length;
+
+                const hasLiked = likes.includes(currentUser.id);
+                const icon = likeBtn.querySelector('i');
+                if (hasLiked) {
+                    icon.className = "fas fa-heart text-2xl text-pink-500 scale-110";
+                } else {
+                    icon.className = "far fa-heart text-2xl";
+                }
+
+                likeBtn.onclick = async () => {
+                    const docRef = doc(db, collectionName, docId);
+                    if (hasLiked) {
+                        await updateDoc(docRef, { "reactions.❤️": arrayRemove(currentUser.id) });
+                    } else {
+                        await updateDoc(docRef, { "reactions.❤️": arrayUnion(currentUser.id) });
+                    }
+                };
+            });
+
+            // Realtime listener for comments
+            onSnapshot(doc(db, collectionName, docId), (snap) => {
+                const data = snap.data();
+                const comments = data.comments || [];
+                commentCount.innerText = comments.length;
+                commentsList.innerHTML = comments.map(c => {
+                    const initial = (c.userName || 'U')[0].toUpperCase();
+                    return `
+                        <div class="flex gap-3 items-start animate-fade-in">
+                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 shrink-0">${initial}</div>
+                            <div class="flex-1">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-0.5">${c.userName}</p>
+                                <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl rounded-tl-none inline-block">${c.text}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                if (comments.length === 0) {
+                    commentsList.innerHTML = `<p class="text-xs text-slate-300 italic">No comments yet. Be the first!</p>`;
+                }
+                commentsList.scrollTop = commentsList.scrollHeight;
+            });
+
+            commentSubmit.onclick = async () => {
+                const text = commentInput.value.trim();
+                if (!text) return;
+                commentInput.value = "";
+                const docRef = doc(db, collectionName, docId);
+                await updateDoc(docRef, {
+                    comments: arrayUnion({
+                        text: text,
+                        userId: currentUser.id,
+                        userName: currentUser.name,
+                        timestamp: Date.now()
+                    })
+                });
+            };
+        }
+
+
+        window.handleSaveRecipe = async () => {
+            const id = document.getElementById('rec-id').value;
+            const btn = document.getElementById('recipe-save-btn');
+            const title = document.getElementById('rec-title').value.trim();
+            const ingredients = document.getElementById('rec-ingredients').value.trim().split('\n').filter(i => i.trim());
+            const steps = document.getElementById('rec-steps').value.trim().split('\n').filter(s => s.trim());
+            const photoFile = document.getElementById('rec-photo').files[0];
+            const category = document.getElementById('rec-category').value;
+
+            if (!title || ingredients.length === 0 || steps.length === 0) {
+                alert("Please fill in the title, ingredients, and steps.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-circle-notch animate-spin mr-2"></i> Saving...`;
+
+            try {
+                let imageUrl = "";
+                if (photoFile && navigator.onLine) {
+                    try {
+                        const storageRef = ref(storage, `recipes/${Date.now()}_${photoFile.name}`);
+                        await uploadBytes(storageRef, photoFile);
+                        imageUrl = await getDownloadURL(storageRef);
+                    } catch (storageErr) {
+                        console.warn("Storage upload failed", storageErr);
+                    }
+                }
+
+                const recipeData = {
+                    title,
+                    ingredients,
+                    steps,
+                    category,
+                    authorId: currentUser.id,
+                    authorName: currentUser.name,
+                    timestamp: Date.now()
+                };
+                if (imageUrl) recipeData.imageUrl = imageUrl;
+
+                if (id) {
+                    await updateDoc(doc(db, "recipes", id), recipeData);
+                    alert("Recipe updated!");
+                } else {
+                    await addDoc(collection(db, "recipes"), recipeData);
+                    alert("Recipe added!");
+                }
+
+                localStorage.removeItem(`draft_rec-ingredients`);
+                localStorage.removeItem(`draft_rec-steps`);
+                closeRecipeModal();
+            } catch (e) {
+                alert("Save Error: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Save Recipe";
+            }
+        };
+
+        function setupRealtimeMemoryLane() {
+            const q = query(collection(db, "memorylane"), orderBy("year", "asc"));
+            onSnapshot(q, (snap) => {
+                const timeline = document.getElementById('memory-timeline');
+                if (!timeline) return;
+                timeline.innerHTML = "";
+
+                snap.forEach(docSnap => {
+                    const mem = docSnap.data();
+                    mem.id = docSnap.id;
+                    const item = document.createElement('div');
+                    item.className = "relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active";
+                    item.innerHTML = `
+                        <div class="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-indigo-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="w-[calc(100%-4rem)] md:w-[45%] bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                            <div class="flex items-center justify-between space-x-2 mb-1">
+                                <div class="font-bold text-slate-900">${mem.title}</div>
+                                <time class="font-bold text-indigo-600">${mem.year}</time>
+                            </div>
+                            <div class="text-slate-500 text-sm mb-4">${mem.description}</div>
+                            ${mem.imageUrl ? `<img src="${mem.imageUrl}" class="w-full h-40 object-cover rounded-2xl mb-4">` : ''}
+                            <div class="flex justify-between items-center">
+                                 <span class="text-[10px] text-slate-400 font-bold uppercase">Added by ${mem.authorName}</span>
+                                 <div class="flex gap-2">
+                                     ${(currentUser.isAdmin || currentUser.id === mem.authorId) ? `
+                                         <button onclick='openMemoryModal(${JSON.stringify(mem).replace(/'/g, "&apos;")})' class="text-indigo-400 hover:text-indigo-600 transition"><i class="fas fa-edit"></i></button>
+                                         <button onclick="handleDeleteMemory('${mem.id}', '${mem.title}')" class="text-red-400 hover:text-red-600 transition"><i class="fas fa-trash"></i></button>
+                                     ` : `
+                                         <button onclick="handleRequestDeletion('memorylane', '${mem.id}', '${mem.title}')" class="text-orange-400 hover:text-orange-600 transition" title="Request Deletion"><i class="fas fa-trash-alt"></i></button>
+                                     `}
+                                 </div>
+                            </div>
+                        </div>
+                    `;
+                    timeline.appendChild(item);
+                });
+
+                if (snap.empty) {
+                    timeline.innerHTML = `
+                        <div class="py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
+                            <i class="fas fa-history text-4xl text-slate-100 mb-4"></i>
+                            <p class="text-slate-400 italic">No historical milestones added yet.</p>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        window.openMemoryModal = (mem = null) => {
+            const modal = document.getElementById('add-memory-modal');
+            const titleText = document.getElementById('memory-modal-title-text');
+            const saveBtn = document.getElementById('memory-save-btn');
+
+            if (mem) {
+                titleText.innerText = "Edit Historical Milestone";
+                saveBtn.innerText = "Update Milestone";
+                document.getElementById('mem-id').value = mem.id;
+                document.getElementById('mem-title').value = mem.title || '';
+                document.getElementById('mem-year').value = mem.year || '';
+                document.getElementById('mem-description').value = mem.description || '';
+            } else {
+                titleText.innerText = "Add Historical Milestone";
+                saveBtn.innerText = "Save Milestone";
+                document.getElementById('mem-id').value = "";
+                document.getElementById('mem-title').value = "";
+                document.getElementById('mem-year').value = "";
+                const draft = localStorage.getItem('draft_mem-description');
+                document.getElementById('mem-description').value = draft || "";
+            }
+            modal.classList.remove('hidden');
+        };
+
+        window.handleSaveMemory = async () => {
+            const id = document.getElementById('mem-id').value;
+            const btn = document.getElementById('memory-save-btn');
+            const title = document.getElementById('mem-title').value.trim();
+            const year = document.getElementById('mem-year').value.trim();
+            const description = document.getElementById('mem-description').value.trim();
+            const photoFile = document.getElementById('mem-photo').files[0];
+
+            if (!title || !year || !description) {
+                alert("Please fill all required fields.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-circle-notch animate-spin mr-2"></i> Saving...`;
+
+            try {
+                let imageUrl = "";
+                if (photoFile && navigator.onLine) {
+                    try {
+                        const storageRef = ref(storage, `memorylane/${Date.now()}_${photoFile.name}`);
+                        await uploadBytes(storageRef, photoFile);
+                        imageUrl = await getDownloadURL(storageRef);
+                    } catch (storageErr) {
+                        console.warn("Storage upload failed", storageErr);
+                    }
+                }
+
+                const memData = {
+                    title,
+                    year,
+                    description,
+                    authorId: currentUser.id,
+                    authorName: currentUser.name,
+                    timestamp: Date.now()
+                };
+                if (imageUrl) memData.imageUrl = imageUrl;
+
+                if (id) {
+                    await updateDoc(doc(db, "memorylane", id), memData);
+                    alert("Milestone updated!");
+                } else {
+                    await addDoc(collection(db, "memorylane"), memData);
+                    alert("Milestone added!");
+                }
+
+                localStorage.removeItem(`draft_mem-description`);
+                closeMemoryModal();
+                // Reset form
+                document.getElementById('mem-title').value = "";
+                document.getElementById('mem-year').value = "";
+                document.getElementById('mem-description').value = "";
+                document.getElementById('mem-photo').value = "";
+                document.getElementById('mem-id').value = "";
+            } catch (e) {
+                alert("Error: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Save Milestone";
+            }
+        };
+
+        window.handleDeleteMemory = async (id, title = "") => {
+            if (currentUser.isAdmin) {
+                if (!confirm("Are you sure you want to delete this milestone?")) return;
+                try {
+                    await deleteDoc(doc(db, "memorylane", id));
+                } catch (e) {
+                    alert("Error deleting: " + e.message);
+                }
+            } else {
+                handleRequestDeletion('memorylane', id, title);
+            }
+        };
 
         window.logout = () => { sessionStorage.clear(); location.reload(); };
         const savedUser = sessionStorage.getItem('user');

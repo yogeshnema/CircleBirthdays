@@ -25,6 +25,13 @@ object FirebaseManager {
         return ref.downloadUrl.await().toString()
     }
 
+    suspend fun uploadPhoto(data: ByteArray): String {
+        val fileName = "photos/${UUID.randomUUID()}.jpg"
+        val ref = storage.reference.child(fileName)
+        ref.putBytes(data).await()
+        return ref.downloadUrl.await().toString()
+    }
+
     suspend fun submitChange(member: Member, isApproved: Boolean) {
         try {
             val collection = if (isApproved) "members" else "pending_updates"
@@ -126,6 +133,7 @@ object FirebaseManager {
     }
 
     suspend fun updatePassword(memberId: String, hashedPw: String) {
+        if (memberId.isBlank()) return
         try {
             db.collection("members").document(memberId)
                 .update("password", hashedPw)
@@ -138,6 +146,7 @@ object FirebaseManager {
     }
 
     suspend fun updateLastLoggedIn(memberId: String) {
+        if (memberId.isBlank()) return
         try {
             db.collection("members").document(memberId)
                 .update("lastLoggedIn", System.currentTimeMillis())
@@ -190,6 +199,7 @@ object FirebaseManager {
     }
 
     suspend fun markChannelAsRead(channelId: String, userId: String) {
+        if (channelId.isBlank()) return
         db.runTransaction { transaction ->
             val channelRef = db.collection("channels").document(channelId)
             val snapshot = transaction.get(channelRef)
@@ -237,6 +247,15 @@ object FirebaseManager {
             }
     }
 
+    suspend fun getMembersOnce(): List<Member> {
+        return try {
+            val snapshot = db.collection("members").get().await()
+            snapshot.toObjects(Member::class.java)
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     fun getPendingChanges(onResult: (List<Member>) -> Unit, onError: (Exception) -> Unit = {}) {
         db.collection("pending_updates")
             .orderBy("familyId")
@@ -264,6 +283,7 @@ object FirebaseManager {
     }
 
     suspend fun updateManualRelationship(targetId: String, observerId: String, relationship: String) {
+        if (targetId.isBlank()) return
         try {
             db.runTransaction { transaction ->
                 val memberRef = db.collection("members").document(targetId)
@@ -378,10 +398,12 @@ object FirebaseManager {
     }
 
     suspend fun approveMemory(memoryId: String) {
+        if (memoryId.isBlank()) return
         db.collection("memories").document(memoryId).update("status", "APPROVED").await()
     }
 
     suspend fun deleteMemory(memoryId: String) {
+        if (memoryId.isBlank()) return
         db.collection("memories").document(memoryId).delete().await()
     }
 
@@ -407,14 +429,17 @@ object FirebaseManager {
     }
 
     suspend fun approveDiscussion(discussionId: String) {
+        if (discussionId.isBlank()) return
         db.collection("discussions").document(discussionId).update("status", "APPROVED").await()
     }
 
     suspend fun deleteDiscussion(discussionId: String) {
+        if (discussionId.isBlank()) return
         db.collection("discussions").document(discussionId).delete().await()
     }
 
     suspend fun addDiscussionComment(discussionId: String, comment: Comment) {
+        if (discussionId.isBlank()) return
         db.runTransaction { transaction ->
             val snapshot = transaction.get(db.collection("discussions").document(discussionId))
             val discussion = snapshot.toObject(Discussion::class.java)
@@ -429,6 +454,7 @@ object FirebaseManager {
     }
 
     suspend fun voteInPoll(discussionId: String, optionId: String, userId: String) {
+        if (discussionId.isBlank()) return
         db.runTransaction { transaction ->
             val snapshot = transaction.get(db.collection("discussions").document(discussionId))
             val discussion = snapshot.toObject(Discussion::class.java)
@@ -455,6 +481,7 @@ object FirebaseManager {
     }
 
     suspend fun toggleReaction(memoryId: String, emoji: String, userId: String) {
+        if (memoryId.isBlank()) return
         db.runTransaction { transaction ->
             val docRef = db.collection("memories").document(memoryId)
             val snapshot = transaction.get(docRef)
@@ -481,6 +508,7 @@ object FirebaseManager {
     }
 
     suspend fun addComment(memoryId: String, comment: Comment) {
+        if (memoryId.isBlank()) return
         db.runTransaction { transaction ->
             val snapshot = transaction.get(db.collection("memories").document(memoryId))
             val memory = snapshot.toObject(Memory::class.java)
@@ -492,5 +520,228 @@ object FirebaseManager {
         }.await()
         // Subscribe to memory updates
         FirebaseMessaging.getInstance().subscribeToTopic("memory_$memoryId").await()
+    }
+
+    // Cookbook
+    fun getRecipes(onResult: (List<Recipe>) -> Unit) {
+        db.collection("recipes")
+            .orderBy("timestamp")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                
+                val recipes = snapshot?.documents?.mapNotNull { doc ->
+                    try {
+                        val data = doc.data ?: return@mapNotNull null
+                        
+                        // Handle instructions (check multiple possible keys used by different platforms)
+                        val instructionsRaw = data["instructions"] ?: data["instruction"] ?: data["steps"] ?: data["method"]
+                        val instructions = when (instructionsRaw) {
+                            is String -> instructionsRaw
+                            is List<*> -> instructionsRaw.filterIsInstance<String>().joinToString("\n")
+                            else -> ""
+                        }
+
+                        // Handle ingredients as either List<String> or String
+                        val ingredientsRaw = data["ingredients"]
+                        val ingredients = when (ingredientsRaw) {
+                            is List<*> -> ingredientsRaw.filterIsInstance<String>()
+                            is String -> ingredientsRaw.split("\n").filter { it.isNotBlank() }
+                            else -> emptyList<String>()
+                        }
+
+                        // Safe parsing for reactions
+                        val reactionsRaw = data["reactions"] as? Map<String, Any>
+                        val reactions = reactionsRaw?.mapValues { entry ->
+                            when (val value = entry.value) {
+                                is List<*> -> value.filterIsInstance<String>()
+                                else -> emptyList<String>()
+                            }
+                        } ?: emptyMap()
+
+                        // Safe parsing for comments
+                        val commentsRaw = data["comments"] as? List<Map<String, Any>>
+                        val comments = commentsRaw?.map { c ->
+                            Comment(
+                                id = c["id"] as? String ?: "",
+                                userId = c["userId"] as? String ?: "",
+                                userName = c["userName"] as? String ?: "",
+                                text = c["text"] as? String ?: "",
+                                timestamp = (c["timestamp"] as? Long) ?: 0L
+                            )
+                        } ?: emptyList()
+
+                        Recipe(
+                            id = doc.id,
+                            title = data["title"] as? String ?: "",
+                            authorId = data["authorId"] as? String ?: "",
+                            authorName = data["authorName"] as? String ?: "",
+                            category = data["category"] as? String ?: "",
+                            description = data["description"] as? String ?: "",
+                            ingredients = ingredients,
+                            instructions = instructions,
+                            imageUrl = data["imageUrl"] as? String ?: "",
+                            reactions = reactions,
+                            comments = comments,
+                            timestamp = (data["timestamp"] as? Long) ?: System.currentTimeMillis()
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("FirebaseManager", "Error parsing recipe ${doc.id}", e)
+                        null
+                    }
+                } ?: emptyList()
+
+                onResult(recipes.sortedByDescending { it.timestamp })
+            }
+    }
+
+    suspend fun submitRecipe(recipe: Recipe) {
+        db.collection("recipes").document(recipe.id).set(recipe).await()
+    }
+
+    suspend fun deleteRecipe(recipeId: String) {
+        if (recipeId.isBlank()) return
+        db.collection("recipes").document(recipeId).delete().await()
+    }
+
+    suspend fun toggleRecipeReaction(recipeId: String, emoji: String, userId: String) {
+        if (recipeId.isBlank()) return
+        db.runTransaction { transaction ->
+            val docRef = db.collection("recipes").document(recipeId)
+            val snapshot = transaction.get(docRef)
+            val data = snapshot.data ?: return@runTransaction
+            
+            val reactionsRaw = data["reactions"] as? Map<String, Any> ?: emptyMap()
+            val currentEmojiValue = reactionsRaw[emoji]
+            
+            val userIds = when (currentEmojiValue) {
+                is List<*> -> currentEmojiValue.filterIsInstance<String>().toMutableList()
+                else -> mutableListOf<String>()
+            }
+            
+            if (userIds.contains(userId)) {
+                userIds.remove(userId)
+            } else {
+                userIds.add(userId)
+            }
+            
+            val updatedReactions = reactionsRaw.toMutableMap()
+            updatedReactions[emoji] = userIds
+            transaction.update(docRef, "reactions", updatedReactions)
+        }.await()
+    }
+
+    suspend fun addRecipeComment(recipeId: String, comment: Comment) {
+        if (recipeId.isBlank()) return
+        db.runTransaction { transaction ->
+            val docRef = db.collection("recipes").document(recipeId)
+            val snapshot = transaction.get(docRef)
+            val recipe = snapshot.toObject(Recipe::class.java)
+            if (recipe != null) {
+                val currentComments = recipe.comments.toMutableList()
+                currentComments.add(comment)
+                transaction.update(docRef, "comments", currentComments)
+            }
+        }.await()
+    }
+
+    // Traditions
+    fun getTraditions(onResult: (List<Tradition>) -> Unit) {
+        db.collection("traditions")
+            .orderBy("timestamp")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val traditions = snapshot?.toObjects(Tradition::class.java) ?: emptyList()
+                onResult(traditions.sortedByDescending { it.timestamp })
+            }
+    }
+
+    suspend fun submitTradition(tradition: Tradition) {
+        db.collection("traditions").document(tradition.id).set(tradition).await()
+    }
+
+    suspend fun deleteTradition(traditionId: String) {
+        if (traditionId.isBlank()) return
+        db.collection("traditions").document(traditionId).delete().await()
+    }
+
+    suspend fun toggleTraditionReaction(traditionId: String, emoji: String, userId: String) {
+        if (traditionId.isBlank()) return
+        db.runTransaction { transaction ->
+            val docRef = db.collection("traditions").document(traditionId)
+            val snapshot = transaction.get(docRef)
+            val data = snapshot.data ?: return@runTransaction
+            
+            val reactionsRaw = data["reactions"] as? Map<String, Any> ?: emptyMap()
+            val currentEmojiValue = reactionsRaw[emoji]
+            
+            val userIds = when (currentEmojiValue) {
+                is List<*> -> currentEmojiValue.filterIsInstance<String>().toMutableList()
+                else -> mutableListOf<String>()
+            }
+            
+            if (userIds.contains(userId)) {
+                userIds.remove(userId)
+            } else {
+                userIds.add(userId)
+            }
+            
+            val updatedReactions = reactionsRaw.toMutableMap()
+            updatedReactions[emoji] = userIds
+            transaction.update(docRef, "reactions", updatedReactions)
+        }.await()
+    }
+
+    suspend fun addTraditionComment(traditionId: String, comment: Comment) {
+        if (traditionId.isBlank()) return
+        db.runTransaction { transaction ->
+            val docRef = db.collection("traditions").document(traditionId)
+            val snapshot = transaction.get(docRef)
+            val tradition = snapshot.toObject(Tradition::class.java)
+            if (tradition != null) {
+                val currentComments = tradition.comments.toMutableList()
+                currentComments.add(comment)
+                transaction.update(docRef, "comments", currentComments)
+            }
+        }.await()
+    }
+
+    // Memory Lane
+    fun getMilestones(onResult: (List<Milestone>) -> Unit) {
+        db.collection("memorylane")
+            .orderBy("year")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val milestones = snapshot?.toObjects(Milestone::class.java) ?: emptyList()
+                onResult(milestones.sortedBy { it.year })
+            }
+    }
+
+    suspend fun submitMilestone(milestone: Milestone) {
+        db.collection("memorylane").document(milestone.id).set(milestone).await()
+    }
+
+    suspend fun deleteMilestone(milestoneId: String) {
+        if (milestoneId.isBlank()) return
+        db.collection("memorylane").document(milestoneId).delete().await()
+    }
+
+    // Deletion Requests
+    suspend fun submitDeletionRequest(request: DeletionRequest) {
+        db.collection("deletion_requests").document(request.id).set(request).await()
+    }
+
+    fun getDeletionRequests(onResult: (List<DeletionRequest>) -> Unit) {
+        db.collection("deletion_requests")
+            .orderBy("timestamp")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val requests = snapshot?.toObjects(DeletionRequest::class.java) ?: emptyList()
+                onResult(requests.sortedByDescending { it.timestamp })
+            }
+    }
+
+    suspend fun deleteDeletionRequest(requestId: String) {
+        if (requestId.isBlank()) return
+        db.collection("deletion_requests").document(requestId).delete().await()
     }
 }

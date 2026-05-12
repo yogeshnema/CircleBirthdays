@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Is the user authenticated?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Is the user an Admin?
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/members/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Helper: Is the user an Editor?
+    function isEditor() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/members/$(request.auth.uid)).data.isEditor == true || isAdmin());
+    }
+
+    // Members collection
+    match /members/{memberId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Allow self-registration or admin creation
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.uid == memberId);
+      allow delete: if isAdmin();
+    }
+
+    // Recipes, Traditions, Gallery (memories), Discussions
+    match /recipes/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    match /traditions/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    match /memories/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    match /discussions/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    // Protected: Approval-based collections
+    match /pending_updates/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    match /deletion_requests/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    match /relationship_overrides/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Geocodes cache
+    match /geocodes/{city} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+  }
+}

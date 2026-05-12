@@ -64,6 +64,8 @@ object CsvHelper {
 
                 if (name.isBlank() || name.lowercase() == "name") continue
 
+                val phoneRaw = if (cols.size > 10) cols[10] else ""
+
                 members.add(
                     Member(
                         id = familyId, // Use familyId as the unique document ID
@@ -73,7 +75,7 @@ object CsvHelper {
                         dateOfBirth = "$yyyy-$mm-$dd",
                         marriageDate = formatWeddingDate(weddingRaw),
                         bereavementDate = formatWeddingDate(bereavementRaw),
-                        phoneNumber = ""
+                        phoneNumber = phoneRaw.replace(Regex("\\D"), "")
                     )
                 )
             } catch (e: Exception) {

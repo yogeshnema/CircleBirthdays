@@ -149,6 +149,18 @@ object FamilyUtils {
                             "Behan", "Didi" -> "Nanad"
                             "Papa" -> "Sasurji"
                             "Mummy" -> "Saasuma"
+                            "Bhabhi" -> {
+                                val husbandId = if (target.familyId.endsWith("0")) target.familyId.dropLast(1) else null
+                                if (husbandId != null) {
+                                    val husband = allMembers.find { it.familyId == husbandId }
+                                    if (husband != null) {
+                                        val relToH = getRelationship(husband, partner, allMembers)
+                                        if (relToH == "Bhai") return "Devrani"
+                                        if (relToH == "Bhaiya") return "Jethani"
+                                    }
+                                }
+                                "Bhabhi"
+                            }
                             else -> relToPartner
                         }
                     } else { // Observer is Husband
@@ -249,7 +261,7 @@ object FamilyUtils {
         // Child Generation
         if (diff == -1) {
             if (tBase.startsWith(oBase)) {
-                if (isTargetSpouse) return if (isFemale) "Bahu" else "Damand"
+                if (isTargetSpouse) return if (isFemale) "Bahu" else "Damaad"
                 return if (isFemale) "Beti" else "Beta"
             }
             // Nephew/Niece
@@ -258,7 +270,7 @@ object FamilyUtils {
             if (tParent != null) {
                 val relToParent = getRelationship(tParent, observer, allMembers)
                 if (relToParent == "Bhai" || relToParent == "Bhaiya" || relToParent == "Didi" || relToParent == "Behan") {
-                    if (isTargetSpouse) return if (isFemale) "Bahu" else "Damand"
+                    if (isTargetSpouse) return if (isFemale) "Bahu" else "Damaad"
                     return if (isFemale(tParent.gender)) {
                         if (isFemale) "Bhanji" else "Bhanja"
                     } else {
@@ -275,7 +287,7 @@ object FamilyUtils {
             val isDaughterChild = tParent != null && isFemale(tParent.gender)
 
             if (tBase.startsWith(oBase)) {
-                if (isTargetSpouse) return if (isFemale) "Bahu" else "Damand"
+                if (isTargetSpouse) return if (isFemale) "Bahu" else "Damaad"
                 return if (isDaughterChild) {
                     if (isFemale) "Natin" else "Nati"
                 } else {
@@ -290,7 +302,7 @@ object FamilyUtils {
                 if (tGrandparent != null) {
                     val relToGP = getRelationship(tGrandparent, observer, allMembers)
                     if (relToGP == "Bhai" || relToGP == "Bhaiya" || relToGP == "Didi" || relToGP == "Behan") {
-                        if (isTargetSpouse) return if (isFemale) "Bahu" else "Damand"
+                        if (isTargetSpouse) return if (isFemale) "Bahu" else "Damaad"
                         return if (isDaughterChild) {
                             if (isFemale) "Natin" else "Nati"
                         } else {
