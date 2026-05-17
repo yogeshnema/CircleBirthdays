@@ -1,0 +1,6 @@
+
+[1m[37m===[39m Deploying to 'circlebirthdays'...[22m
+
+[36m[1mi [22m[39m deploying [1mhosting[22m
+[36m[1mi  hosting[circlebirthdays]:[22m[39m beginning deploy...
+[36m[1mi  hosting[circlebirthdays]:[22m[39m found 4 files in [1mpublic[22m

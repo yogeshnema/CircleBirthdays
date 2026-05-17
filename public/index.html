@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        html, body { height: 100%; margin: 0; background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; }
+        html, body { height: 100%; margin: 0; background-color: #263238; color: #D9C7A3; font-family: 'Plus Jakarta Sans', sans-serif; }
         .bg-fixed-branding {
             position: fixed;
             top: 0;
@@ -21,19 +21,24 @@
             background-image: url('background.png');
             background-size: cover;
             background-position: center;
-            opacity: 0.1;
+            opacity: 0.05;
             z-index: 0;
             pointer-events: none;
         }
         #hero, #dashboard { position: relative; z-index: 10; }
-        nav { background: rgba(255, 255, 255, 0.7) !important; backdrop-filter: blur(12px); }
-        .modal-bg { background-color: rgba(15, 23, 42, 0.8); }
+        nav { background: rgba(38, 50, 56, 0.8) !important; backdrop-filter: blur(12px); border-bottom: 1px solid rgba(250, 247, 242, 0.1) !important; }
+        .modal-bg { background-color: rgba(15, 23, 42, 0.9); }
         .active-tab { background-color: #4f46e5; color: white; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.2); }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+        /* Custom Card/Container Styles for Dark Theme */
+        .glass-card { background: rgba(62, 39, 35, 0.5); backdrop-filter: blur(8px); border: 1px solid rgba(217, 199, 163, 0.1); border-radius: 2rem; }
+        .input-dark { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(217, 199, 163, 0.1); color: #D9C7A3; }
+        .input-dark::placeholder { color: rgba(217, 199, 163, 0.5); }
+
         /* Family Tree Custom Styles */
-        #tree-viewport { overflow: auto; cursor: grab; background-color: #f1f5f9; position: relative; }
+        #tree-viewport { overflow: auto; cursor: grab; background-color: #263238; position: relative; }
         #tree-viewport:active { cursor: grabbing; }
         #tree-wrapper { transform-origin: top left; transition: transform 0.2s ease-out; }
         .tree-node { width: 140px; }
@@ -41,18 +46,18 @@
         .connector-v { width: 2px; background: #cbd5e1; position: absolute; }
     </style>
 </head>
-<body class="text-slate-900">
+<body class="text-[#D9C7A3]">
     <div class="bg-fixed-branding"></div>
 
     <!-- Auth Hero -->
     <div id="hero" class="min-h-screen flex items-center justify-center p-6">
         <div class="max-w-md w-full text-center">
-            <div class="mb-10 inline-block p-4 bg-white rounded-[2.5rem] shadow-xl shadow-indigo-100">
-                <i class="fas fa-users-rays text-5xl text-indigo-600"></i>
+            <div class="mb-10 inline-block p-4 bg-[#3E2723] rounded-[2.5rem] shadow-xl shadow-black/20">
+                <i class="fas fa-users-rays text-5xl text-indigo-400"></i>
             </div>
-            <h1 class="text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">Purawale - Hum aur Humare</h1>
-            <p class="text-slate-500 mb-10 text-lg">Connecting generations, celebrating birthdays, and preserving our family heritage.</p>
-            <button onclick="openModal()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-xl hover:bg-indigo-700 transition transform hover:-translate-y-1 shadow-2xl shadow-indigo-200">
+            <h1 class="text-5xl font-extrabold text-[#D9C7A3] mb-4 tracking-tight">Purawale - Hum aur Humare</h1>
+            <p class="text-[#D9C7A3]/80 mb-10 text-lg">Connecting generations, celebrating birthdays, and preserving our family heritage.</p>
+            <button onclick="openModal()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-xl hover:bg-indigo-700 transition transform hover:-translate-y-1 shadow-2xl shadow-indigo-900/20">
                 Sign In to Portal
             </button>
         </div>
@@ -60,23 +65,23 @@
 
     <!-- Login Modal -->
     <div id="login-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-50 p-6 backdrop-blur-sm">
-        <div class="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl">
-            <h2 class="text-3xl font-extrabold mb-2 text-slate-800">Welcome Back</h2>
-            <p class="text-slate-400 mb-8 font-medium">Please enter your family credentials</p>
+        <div class="bg-[#3E2723] rounded-[3rem] p-10 max-w-sm w-full shadow-2xl border border-white/5">
+            <h2 class="text-3xl font-extrabold mb-2 text-[#D9C7A3]">Welcome Back</h2>
+            <p class="text-[#D9C7A3]/60 mb-8 font-medium">Please enter your family credentials</p>
             <div class="space-y-4">
                 <div class="relative">
-                    <i class="fas fa-phone absolute left-5 top-5 text-slate-300"></i>
-                    <input type="text" id="login-phone" placeholder="Phone Number" class="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium">
+                    <i class="fas fa-phone absolute left-5 top-5 text-[#D9C7A3]/40"></i>
+                    <input type="text" id="login-phone" placeholder="Phone Number" class="w-full pl-12 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium text-[#D9C7A3]">
                 </div>
                 <div class="relative">
-                    <i class="fas fa-lock absolute left-5 top-5 text-slate-300"></i>
-                    <input type="password" id="login-pwd" placeholder="Portal Password" class="w-full pl-12 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium">
+                    <i class="fas fa-lock absolute left-5 top-5 text-[#D9C7A3]/40"></i>
+                    <input type="password" id="login-pwd" placeholder="Portal Password" class="w-full pl-12 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium text-[#D9C7A3]">
                 </div>
-                <div id="login-error" class="hidden text-red-500 text-sm font-bold px-2"></div>
-                <button id="login-btn" onclick="handleLogin()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition mt-4 shadow-lg shadow-indigo-100">
+                <div id="login-error" class="hidden text-red-400 text-sm font-bold px-2"></div>
+                <button id="login-btn" onclick="handleLogin()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition mt-4 shadow-lg shadow-indigo-900/20">
                     Enter Portal
                 </button>
-                <button onclick="closeModal()" class="w-full text-slate-400 py-2 font-bold text-sm">Cancel</button>
+                <button onclick="closeModal()" class="w-full text-[#D9C7A3]/60 py-2 font-bold text-sm">Cancel</button>
             </div>
         </div>
     </div>
@@ -84,25 +89,25 @@
     <!-- Main Dashboard -->
     <div id="dashboard" class="hidden min-h-screen flex flex-col">
         <!-- Navigation -->
-        <nav class="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-100">
+        <nav class="bg-[#263238]/80 backdrop-blur-md sticky top-0 z-40 border-b border-white/5">
             <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-indigo-600 rounded-xl text-white">
                         <i class="fas fa-users-rays"></i>
                     </div>
-                    <span class="font-extrabold text-xl tracking-tight text-slate-800">Purawale - Hum aur Humare</span>
+                    <span class="font-extrabold text-xl tracking-tight text-[#D9C7A3]">Purawale - Hum aur Humare</span>
                 </div>
-                <div id="nav-actions" class="flex gap-8 items-center font-bold text-sm text-slate-500">
-                    <a href="#directory" class="hover:text-indigo-600 transition">Directory</a>
-                    <a href="#tree" class="hover:text-indigo-600 transition">Family Tree</a>
-                    <a href="#discussions" class="hover:text-indigo-600 transition">Discussions</a>
+                <div id="nav-actions" class="flex gap-8 items-center font-bold text-sm text-[#D9C7A3]/80">
+                    <a href="#directory" class="hover:text-indigo-400 transition">Directory</a>
+                    <a href="#tree" class="hover:text-indigo-400 transition">Family Tree</a>
+                    <a href="#discussions" class="hover:text-indigo-400 transition">Discussions</a>
                 </div>
                 <div id="user-profile" class="hidden flex items-center gap-4">
                     <div class="text-right hidden md:block">
-                        <p id="user-name" class="font-bold text-slate-800 text-sm"></p>
-                        <p id="user-role" class="text-[10px] text-indigo-500 font-black uppercase tracking-widest"></p>
+                        <p id="user-name" class="font-bold text-[#D9C7A3] text-sm"></p>
+                        <p id="user-role" class="text-[10px] text-indigo-400 font-black uppercase tracking-widest"></p>
                     </div>
-                    <button onclick="logout()" class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition border border-slate-100">
+                    <button onclick="logout()" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#D9C7A3] hover:text-red-400 hover:bg-red-400/10 transition border border-white/10">
                         <i class="fas fa-power-off"></i>
                     </button>
                 </div>
@@ -110,36 +115,36 @@
         </nav>
 
         <!-- Dynamic Tabs -->
-        <div class="bg-white border-b border-slate-100 overflow-x-auto scrollbar-hide">
+        <div class="bg-[#263238] border-b border-white/5 overflow-x-auto scrollbar-hide">
             <div class="max-w-7xl mx-auto px-6 flex">
                 <button onclick="switchTab('directory')" id="tab-directory" class="px-6 py-4 font-bold text-sm transition-all active-tab border-b-2 border-transparent">
                     <i class="fas fa-address-book mr-2"></i> Member Directory
                 </button>
-                <button onclick="switchTab('tree')" id="tab-tree" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                <button onclick="switchTab('tree')" id="tab-tree" class="px-6 py-4 font-bold text-sm text-[#D9C7A3]/60 transition-all border-b-2 border-transparent hover:text-[#D9C7A3]">
                     <i class="fas fa-network-wired mr-2"></i> Interactive Tree
                 </button>
-                <button onclick="switchTab('map')" id="tab-map" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                <button onclick="switchTab('map')" id="tab-map" class="px-6 py-4 font-bold text-sm text-[#D9C7A3]/60 transition-all border-b-2 border-transparent hover:text-[#D9C7A3]">
                     <i class="fas fa-map-marked-alt mr-2"></i> Family Map
                 </button>
-                <button onclick="switchTab('discussions')" id="tab-discussions" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                <button onclick="switchTab('discussions')" id="tab-discussions" class="px-6 py-4 font-bold text-sm text-[#D9C7A3]/60 transition-all border-b-2 border-transparent hover:text-[#D9C7A3]">
                     <i class="fas fa-comments mr-2"></i> Discussions
                 </button>
-                <button onclick="switchTab('messaging')" id="tab-messaging" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                <button onclick="switchTab('messaging')" id="tab-messaging" class="px-6 py-4 font-bold text-sm text-[#D9C7A3]/60 transition-all border-b-2 border-transparent hover:text-[#D9C7A3]">
                     <i class="fas fa-paper-plane mr-2"></i> Messaging
                 </button>
-                <button onclick="switchTab('gallery')" id="tab-gallery" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                <button onclick="switchTab('gallery')" id="tab-gallery" class="px-6 py-4 font-bold text-sm text-[#D9C7A3]/60 transition-all border-b-2 border-transparent hover:text-[#D9C7A3]">
                     <i class="fas fa-images mr-2"></i> Gallery
                 </button>
-                <button onclick="switchTab('cookbook')" id="tab-cookbook" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                <button onclick="switchTab('cookbook')" id="tab-cookbook" class="px-6 py-4 font-bold text-sm text-[#D9C7A3]/60 transition-all border-b-2 border-transparent hover:text-[#D9C7A3]">
                     <i class="fas fa-utensils mr-2"></i> Cookbook
                 </button>
-                <button onclick="switchTab('traditions')" id="tab-traditions" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                <button onclick="switchTab('traditions')" id="tab-traditions" class="px-6 py-4 font-bold text-sm text-[#D9C7A3]/60 transition-all border-b-2 border-transparent hover:text-[#D9C7A3]">
                     <i class="fas fa-scroll mr-2"></i> Traditions
                 </button>
-                <button onclick="switchTab('memorylane')" id="tab-memorylane" class="px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                <button onclick="switchTab('memorylane')" id="tab-memorylane" class="px-6 py-4 font-bold text-sm text-[#D9C7A3]/60 transition-all border-b-2 border-transparent hover:text-[#D9C7A3]">
                     <i class="fas fa-history mr-2"></i> Memory Lane
                 </button>
-                <button onclick="switchTab('approvals')" id="tab-approvals" class="hidden px-6 py-4 font-bold text-sm text-slate-400 transition-all border-b-2 border-transparent">
+                <button onclick="switchTab('approvals')" id="tab-approvals" class="hidden px-6 py-4 font-bold text-sm text-[#D9C7A3]/60 transition-all border-b-2 border-transparent hover:text-[#D9C7A3]">
                     <i class="fas fa-user-check mr-2"></i> Approvals
                 </button>
             </div>
@@ -150,12 +155,12 @@
             <section id="content-directory">
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
                     <div>
-                        <h2 class="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">Member Directory</h2>
-                        <p class="text-slate-400 font-medium">Find and connect with family members worldwide.</p>
+                        <h2 class="text-4xl font-extrabold text-[#D9C7A3] tracking-tight mb-2">Member Directory</h2>
+                        <p class="text-[#D9C7A3]/60 font-medium">Find and connect with family members worldwide.</p>
                     </div>
                     <div class="relative w-full md:w-96">
-                        <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-300"></i>
-                        <input type="text" id="search" placeholder="Search by name, role, or city..." class="w-full pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+                        <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-[#D9C7A3]/40"></i>
+                        <input type="text" id="search" placeholder="Search by name, role, or city..." class="w-full pl-12 pr-6 py-4 bg-white/5 border border-white/10 rounded-2xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium text-[#D9C7A3]">
                     </div>
                 </div>
                 <div id="member-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -167,17 +172,17 @@
             <section id="content-tree" class="hidden h-full flex flex-col">
                 <div class="flex justify-between items-center mb-6">
                     <div>
-                        <h2 class="text-2xl font-bold text-slate-800">Ancestral Visualization</h2>
-                        <p class="text-sm text-slate-400">Click and drag to explore our family roots.</p>
+                        <h2 class="text-2xl font-bold text-[#D9C7A3]">Ancestral Visualization</h2>
+                        <p class="text-sm text-[#D9C7A3]/60">Click and drag to explore our family roots.</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="jumpToMyNode()" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-100 transition">Find Me</button>
-                        <button onclick="zoomTree(1.2)" class="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-50 transition"><i class="fas fa-plus text-xs"></i></button>
-                        <button onclick="zoomTree(0.8)" class="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-50 transition"><i class="fas fa-minus text-xs"></i></button>
-                        <button onclick="resetZoom()" class="w-10 h-10 bg-white border border-slate-100 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-50 transition"><i class="fas fa-expand text-xs"></i></button>
+                        <button onclick="jumpToMyNode()" class="bg-indigo-600/20 text-indigo-400 border border-indigo-400/30 px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-600/30 transition">Find Me</button>
+                        <button onclick="zoomTree(1.2)" class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-[#D9C7A3] hover:bg-white/10 transition"><i class="fas fa-plus text-xs"></i></button>
+                        <button onclick="zoomTree(0.8)" class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-[#D9C7A3] hover:bg-white/10 transition"><i class="fas fa-minus text-xs"></i></button>
+                        <button onclick="resetZoom()" class="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-[#D9C7A3] hover:bg-white/10 transition"><i class="fas fa-expand text-xs"></i></button>
                     </div>
                 </div>
-                <div id="tree-viewport" class="flex-1 rounded-[3rem] border border-slate-100 shadow-inner min-h-[600px] relative">
+                <div id="tree-viewport" class="flex-1 rounded-[3rem] border border-white/5 shadow-inner min-h-[600px] relative">
                     <div id="tree-wrapper" class="absolute left-0 top-0 p-40">
                         <!-- Nodes and Connectors injected here -->
                     </div>
@@ -187,8 +192,8 @@
             <!-- Discussions Tab -->
             <section id="content-discussions" class="hidden">
                 <div class="flex justify-between items-center mb-8">
-                    <h2 class="text-2xl font-bold text-slate-800">Family Talk</h2>
-                    <button onclick="openDiscussionModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">
+                    <h2 class="text-2xl font-bold text-[#D9C7A3]">Family Talk</h2>
+                    <button onclick="openDiscussionModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-900/20">
                         Start a Discussion
                     </button>
                 </div>
@@ -199,28 +204,28 @@
 
             <!-- Messaging Content -->
             <section id="content-messaging" class="hidden">
-                <div class="flex h-[75vh] bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+                <div class="flex h-[75vh] bg-[#3E2723]/50 backdrop-blur-md rounded-[3rem] shadow-sm border border-white/5 overflow-hidden">
                     <!-- Channels/Contacts Sidebar -->
-                    <div class="w-80 border-r border-slate-100 flex flex-col">
-                        <div class="p-6 border-b border-slate-100">
-                            <h3 class="font-bold text-slate-800">Messages</h3>
+                    <div class="w-80 border-r border-white/5 flex flex-col">
+                        <div class="p-6 border-b border-white/5">
+                            <h3 class="font-bold text-[#D9C7A3]">Messages</h3>
                         </div>
                         <div id="channel-list" class="flex-1 overflow-y-auto p-4 space-y-2">
                             <!-- DM list here -->
                         </div>
                     </div>
                     <!-- Chat Area -->
-                    <div class="flex-1 flex flex-col bg-slate-50/50">
-                        <div id="chat-header" class="h-16 bg-white border-b border-slate-100 flex items-center px-8">
-                            <p class="text-slate-400 italic">Select a family member to start chatting</p>
+                    <div class="flex-1 flex flex-col bg-black/10">
+                        <div id="chat-header" class="h-16 bg-[#3E2723]/80 border-b border-white/5 flex items-center px-8">
+                            <p class="text-[#D9C7A3]/40 italic">Select a family member to start chatting</p>
                         </div>
                         <div id="message-flow" class="flex-1 overflow-y-auto p-8 space-y-4">
                             <!-- Messages here -->
                         </div>
-                        <div id="message-input-area" class="hidden p-6 bg-white border-t border-slate-100">
+                        <div id="message-input-area" class="hidden p-6 bg-[#3E2723]/80 border-t border-white/5">
                             <div class="flex gap-4">
-                                <input type="text" id="msg-input" placeholder="Type your message..." class="flex-1 px-6 py-3 bg-slate-50 rounded-2xl border-none focus:ring-2 focus:ring-indigo-500">
-                                <button onclick="sendMessage()" class="bg-indigo-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">
+                                <input type="text" id="msg-input" placeholder="Type your message..." class="flex-1 px-6 py-3 bg-white/5 rounded-2xl border border-white/10 text-[#D9C7A3] focus:ring-2 focus:ring-indigo-500">
+                                <button onclick="sendMessage()" class="bg-indigo-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center hover:bg-indigo-700 transition shadow-lg shadow-indigo-900/20">
                                     <i class="fas fa-paper-plane"></i>
                                 </button>
                             </div>
@@ -232,8 +237,8 @@
             <!-- Gallery Content -->
             <section id="content-gallery" class="hidden">
                 <div class="flex justify-between items-center mb-8">
-                    <h2 class="text-2xl font-bold text-slate-800">Family Memories</h2>
-                    <p class="text-sm text-slate-400">Shared by family members</p>
+                    <h2 class="text-2xl font-bold text-[#D9C7A3]">Family Memories</h2>
+                    <p class="text-sm text-[#D9C7A3]/60">Shared by family members</p>
                 </div>
                 <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
             </section>
@@ -241,20 +246,20 @@
             <!-- Family Map Content -->
             <section id="content-map" class="hidden">
                 <div class="flex justify-between items-center mb-8">
-                    <h2 class="text-2xl font-bold text-slate-800">Family Footprint</h2>
-                    <p class="text-sm text-slate-400">Where our family lives across the globe</p>
+                    <h2 class="text-2xl font-bold text-[#D9C7A3]">Family Footprint</h2>
+                    <p class="text-sm text-[#D9C7A3]/60">Where our family lives across the globe</p>
                 </div>
-                <div id="family-map" class="h-[600px] w-full rounded-[3rem] shadow-inner border border-slate-100 z-10"></div>
+                <div id="family-map" class="h-[600px] w-full rounded-[3rem] shadow-inner border border-white/5 z-10"></div>
             </section>
 
             <!-- Cookbook Content -->
             <section id="content-cookbook" class="hidden">
                 <div class="flex justify-between items-center mb-8">
                     <div>
-                        <h2 class="text-2xl font-bold text-slate-800">Family Cookbook</h2>
-                        <p class="text-sm text-slate-400">Heritage recipes passed through generations</p>
+                        <h2 class="text-2xl font-bold text-[#D9C7A3]">Family Cookbook</h2>
+                        <p class="text-sm text-[#D9C7A3]/60">Heritage recipes passed through generations</p>
                     </div>
-                    <button onclick="openRecipeModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center gap-2">
+                    <button onclick="openRecipeModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-900/20 flex items-center gap-2">
                         <i class="fas fa-plus"></i> Add Recipe
                     </button>
                 </div>
@@ -265,10 +270,10 @@
             <section id="content-traditions" class="hidden">
                 <div class="flex justify-between items-center mb-8">
                     <div>
-                        <h2 class="text-2xl font-bold text-slate-800">Family Traditions</h2>
-                        <p class="text-sm text-slate-400">Stories and rituals that define our heritage</p>
+                        <h2 class="text-2xl font-bold text-[#D9C7A3]">Family Traditions</h2>
+                        <p class="text-sm text-[#D9C7A3]/60">Stories and rituals that define our heritage</p>
                     </div>
-                    <button onclick="openTraditionModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center gap-2">
+                    <button onclick="openTraditionModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-900/20 flex items-center gap-2">
                         <i class="fas fa-plus"></i> Share Tradition
                     </button>
                 </div>
@@ -279,14 +284,14 @@
             <section id="content-memorylane" class="hidden">
                 <div class="flex justify-between items-center mb-8">
                     <div>
-                        <h2 class="text-2xl font-bold text-slate-800">Memory Lane</h2>
-                        <p class="text-sm text-slate-400">A journey through our family's historical milestones.</p>
+                        <h2 class="text-2xl font-bold text-[#D9C7A3]">Memory Lane</h2>
+                        <p class="text-sm text-[#D9C7A3]/60">A journey through our family's historical milestones.</p>
                     </div>
-                    <button onclick="openMemoryModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 flex items-center gap-2">
+                    <button onclick="openMemoryModal()" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-900/20 flex items-center gap-2">
                         <i class="fas fa-plus"></i> Add Milestone
                     </button>
                 </div>
-                <div id="memory-timeline" class="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+                <div id="memory-timeline" class="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
                     <!-- Timeline items injected here -->
                 </div>
             </section>
@@ -294,29 +299,29 @@
             <!-- Admin Approvals Content -->
             <section id="content-approvals" class="hidden">
                 <div class="mb-8">
-                    <h2 class="text-2xl font-bold text-slate-800">Admin Approvals</h2>
-                    <p class="text-sm text-slate-500">Review and approve changes submitted by the family.</p>
+                    <h2 class="text-2xl font-bold text-[#D9C7A3]">Admin Approvals</h2>
+                    <p class="text-sm text-[#D9C7A3]/80">Review and approve changes submitted by the family.</p>
                 </div>
 
                 <div class="space-y-12">
                     <!-- Deletion Requests -->
                     <div>
-                        <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <h3 class="text-lg font-bold text-[#D9C7A3]/60 mb-4 flex items-center gap-2">
                             <i class="fas fa-user-minus text-red-400"></i> Deletion Requests
                         </h3>
                         <div id="deletion-requests" class="grid gap-4"></div>
                     </div>
                     <!-- Update Requests -->
                     <div>
-                        <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <h3 class="text-lg font-bold text-[#D9C7A3]/60 mb-4 flex items-center gap-2">
                             <i class="fas fa-user-edit text-amber-400"></i> Information Updates
                         </h3>
                         <div id="update-requests" class="grid gap-4"></div>
                     </div>
                     <!-- Relationship Overrides -->
                     <div>
-                        <h3 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
-                            <i class="fas fa- people-arrows text-indigo-400"></i> Relationship Overrides
+                        <h3 class="text-lg font-bold text-[#D9C7A3]/60 mb-4 flex items-center gap-2">
+                            <i class="fas fa-people-arrows text-indigo-400"></i> Relationship Overrides
                         </h3>
                         <div id="relationship-overrides" class="grid gap-4"></div>
                     </div>
@@ -331,9 +336,9 @@
             <div class="flex justify-between items-start mb-10">
                 <div>
                     <h2 id="edit-modal-title" class="text-3xl font-extrabold text-slate-800">Edit Member</h2>
-                    <p id="edit-modal-subtitle" class="text-slate-400 font-medium">Update profile information in the database.</p>
+                    <p id="edit-modal-subtitle" class="text-slate-600 font-medium">Update profile information in the database.</p>
                 </div>
-                <button onclick="closeEditModal()" class="text-slate-300 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
+                <button onclick="closeEditModal()" class="text-slate-500 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
             </div>
 
             <form id="edit-form" class="space-y-8" onsubmit="event.preventDefault()">
@@ -343,7 +348,7 @@
                     <!-- Photo Column -->
                     <div class="w-full md:w-1/3 space-y-6">
                         <div class="relative group">
-                            <div id="edit-photo-preview" class="w-full aspect-square rounded-[2rem] bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden text-slate-300">
+                            <div id="edit-photo-preview" class="w-full aspect-square rounded-[2rem] bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden text-slate-500">
                                 <i class="fas fa-user text-6xl"></i>
                             </div>
                             <label class="absolute inset-0 cursor-pointer flex items-center justify-center bg-indigo-600/0 group-hover:bg-indigo-600/80 transition rounded-[2rem] opacity-0 group-hover:opacity-100">
@@ -351,52 +356,52 @@
                                 <span class="text-white font-bold"><i class="fas fa-camera mr-2"></i> Change Photo</span>
                             </label>
                         </div>
-                        <p class="text-[10px] text-center text-slate-400 uppercase tracking-widest font-bold">Recommended: Square Image</p>
+                        <p class="text-[10px] text-center text-slate-600 uppercase tracking-widest font-bold">Recommended: Square Image</p>
                     </div>
 
                     <!-- Fields Column -->
                     <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Full Name</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Full Name</label>
                             <input type="text" id="edit-name" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Family ID (e.g. AB12)</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Family ID (e.g. AB12)</label>
                             <input type="text" id="edit-familyId" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Gender</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Gender</label>
                             <select id="edit-gender" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
                                 <option>Male</option>
                                 <option>Female</option>
                             </select>
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Date of Birth</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Date of Birth</label>
                             <input type="text" id="edit-dob" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Phone Number</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Phone Number</label>
                             <input type="text" id="edit-phone" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Email Address</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Email Address</label>
                             <input type="email" id="edit-email" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Marriage Date</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Marriage Date</label>
                             <input type="text" id="edit-marriage" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="Optional">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Bereavement Date</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Bereavement Date</label>
                             <input type="text" id="edit-bereavement" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="Optional">
                         </div>
                         <div class="space-y-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Current City</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Current City</label>
                             <input type="text" id="edit-location" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="City, Country">
                         </div>
                         <div class="space-y-2 md:col-span-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Social Media Links</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Social Media Links</label>
                             <div class="grid grid-cols-3 gap-2">
                                 <input type="text" id="edit-facebook" placeholder="Facebook URL" class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-xs">
                                 <input type="text" id="edit-instagram" placeholder="Instagram URL" class="w-full px-4 py-3 bg-slate-50 border-none rounded-xl text-xs">
@@ -404,7 +409,7 @@
                             </div>
                         </div>
                         <div class="space-y-2 md:col-span-2">
-                            <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Home Address</label>
+                            <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Home Address</label>
                             <textarea id="edit-address" rows="2" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700"></textarea>
                         </div>
                     </div>
@@ -414,7 +419,7 @@
                     <button id="save-btn" class="flex-1 bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-lg hover:bg-indigo-700 transition shadow-2xl shadow-indigo-100">
                         Apply Changes
                     </button>
-                    <button onclick="closeEditModal()" class="flex-1 bg-slate-100 text-slate-500 py-5 rounded-[2rem] font-bold text-lg hover:bg-slate-200 transition">
+                    <button onclick="closeEditModal()" class="flex-1 bg-slate-100 text-slate-700 py-5 rounded-[2rem] font-bold text-lg hover:bg-slate-200 transition">
                         Cancel
                     </button>
                 </div>
@@ -425,7 +430,7 @@
     <!-- Gallery Detail Modal -->
     <div id="gallery-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[120] px-4 backdrop-blur-sm">
         <div class="bg-white rounded-[3rem] max-w-5xl w-full shadow-2xl relative overflow-hidden flex flex-col md:flex-row h-[85vh]">
-            <button onclick="closeGalleryModal()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition z-10 bg-white/50 backdrop-blur-md w-10 h-10 rounded-full flex items-center justify-center">
+            <button onclick="closeGalleryModal()" class="absolute top-6 right-6 text-slate-600 hover:text-slate-600 transition z-10 bg-white/50 backdrop-blur-md w-10 h-10 rounded-full flex items-center justify-center">
                 <i class="fas fa-times text-xl"></i>
             </button>
 
@@ -441,17 +446,17 @@
                         <div id="author-initial" class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-sm"></div>
                         <div>
                             <p id="modal-author" class="font-bold text-slate-800"></p>
-                            <p id="modal-date" class="text-xs text-slate-400"></p>
+                            <p id="modal-date" class="text-xs text-slate-600"></p>
                         </div>
                     </div>
                     <p id="modal-caption" class="text-slate-600 text-sm leading-relaxed mb-6"></p>
 
                     <div class="flex items-center gap-6">
-                        <button id="like-btn" class="flex items-center gap-2 text-slate-400 hover:text-pink-500 transition group">
+                        <button id="like-btn" class="flex items-center gap-2 text-slate-600 hover:text-pink-500 transition group">
                             <i class="far fa-heart text-xl group-hover:scale-125 transition"></i>
                             <span id="like-count" class="font-bold text-sm">0</span>
                         </button>
-                        <div class="flex items-center gap-2 text-slate-400">
+                        <div class="flex items-center gap-2 text-slate-600">
                             <i class="far fa-comment text-xl"></i>
                             <span id="comment-count" class="font-bold text-sm">0</span>
                         </div>
@@ -479,7 +484,7 @@
     <!-- Recipe Details Modal -->
     <div id="recipe-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[120] px-4 backdrop-blur-sm">
         <div class="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl relative overflow-hidden flex flex-col h-[85vh]">
-            <button onclick="closeRecipeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition z-10 bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm">
+            <button onclick="closeRecipeModal()" class="absolute top-4 right-4 text-slate-600 hover:text-slate-600 transition z-10 bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm">
                 <i class="fas fa-times text-xl"></i>
             </button>
 
@@ -516,11 +521,11 @@
 
                     <div id="recipe-interaction" class="mt-12 pt-8 border-t border-slate-100">
                         <div class="flex items-center gap-6 mb-8">
-                            <button id="recipe-like-btn" class="flex items-center gap-2 text-slate-400 hover:text-pink-500 transition group">
+                            <button id="recipe-like-btn" class="flex items-center gap-2 text-slate-600 hover:text-pink-500 transition group">
                                 <i class="far fa-heart text-2xl group-hover:scale-125 transition"></i>
                                 <span id="recipe-like-count" class="font-bold text-lg">0</span>
                             </button>
-                            <div class="flex items-center gap-2 text-slate-400">
+                            <div class="flex items-center gap-2 text-slate-600">
                                 <i class="far fa-comment text-2xl"></i>
                                 <span id="recipe-comment-count" class="font-bold text-lg">0</span>
                             </div>
@@ -560,20 +565,20 @@
             <div class="flex justify-between items-start mb-8">
                 <div>
                     <h2 id="recipe-modal-title-text" class="text-3xl font-extrabold text-slate-800">Share Family Recipe</h2>
-                    <p class="text-slate-400 font-medium">Keep our culinary heritage alive.</p>
+                    <p class="text-slate-600 font-medium">Keep our culinary heritage alive.</p>
                 </div>
-                <button onclick="closeRecipeModal()" class="text-slate-300 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
+                <button onclick="closeRecipeModal()" class="text-slate-500 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
             </div>
 
             <div class="space-y-6">
                 <input type="hidden" id="rec-id">
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Recipe Title</label>
+                        <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Recipe Title</label>
                         <input type="text" id="rec-title" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
                     </div>
                     <div class="space-y-2">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Category</label>
+                        <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Category</label>
                         <select id="rec-category" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
                             <option>Main Dish</option>
                             <option>Dessert</option>
@@ -585,7 +590,7 @@
                 </div>
                 <div class="space-y-2">
                     <div class="flex justify-between items-center px-1">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Ingredients (One per line)</label>
+                        <label class="text-xs font-black text-slate-600 uppercase tracking-widest">Ingredients (One per line)</label>
                         <button onclick="startDictation('rec-ingredients', 'hi-IN')" class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1 text-[10px] font-bold">
                             <i class="fas fa-microphone"></i> Dictate (Hindi)
                         </button>
@@ -598,7 +603,7 @@
                 </div>
                 <div class="space-y-2">
                     <div class="flex justify-between items-center px-1">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Instructions (One step per line)</label>
+                        <label class="text-xs font-black text-slate-600 uppercase tracking-widest">Instructions (One step per line)</label>
                         <button onclick="startDictation('rec-steps', 'hi-IN')" class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1 text-[10px] font-bold">
                             <i class="fas fa-microphone"></i> Dictate (Hindi)
                         </button>
@@ -610,7 +615,7 @@
                     <textarea id="rec-steps" rows="6" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium"></textarea>
                 </div>
                 <div class="space-y-2">
-                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Recipe Photo</label>
+                    <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Recipe Photo</label>
                     <input type="file" id="rec-photo" accept="image/*" class="w-full">
                 </div>
                 <button id="recipe-save-btn" onclick="handleSaveRecipe()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-lg hover:bg-indigo-700 transition">
@@ -626,20 +631,20 @@
             <div class="flex justify-between items-start mb-8">
                 <div>
                     <h2 id="tradition-modal-title-text" class="text-3xl font-extrabold text-slate-800">Share Family Tradition</h2>
-                    <p class="text-slate-400 font-medium">Document our unique family rituals.</p>
+                    <p class="text-slate-600 font-medium">Document our unique family rituals.</p>
                 </div>
-                <button onclick="closeTraditionModal()" class="text-slate-300 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
+                <button onclick="closeTraditionModal()" class="text-slate-500 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
             </div>
 
             <div class="space-y-6">
                 <input type="hidden" id="trad-id">
                 <div class="space-y-2">
-                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Tradition Title</label>
+                    <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Tradition Title</label>
                     <input type="text" id="trad-title" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
                 </div>
                 <div class="space-y-2">
                     <div class="flex justify-between items-center px-1">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Story / Description</label>
+                        <label class="text-xs font-black text-slate-600 uppercase tracking-widest">Story / Description</label>
                         <button onclick="startDictation('trad-description', 'hi-IN')" class="text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1 text-[10px] font-bold">
                             <i class="fas fa-microphone"></i> Dictate (Hindi)
                         </button>
@@ -651,7 +656,7 @@
                     <textarea id="trad-description" rows="8" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium" placeholder="Tell the story of this tradition..."></textarea>
                 </div>
                 <div class="space-y-2">
-                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Tradition Photo</label>
+                    <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Tradition Photo</label>
                     <input type="file" id="trad-photo" accept="image/*" class="w-full">
                 </div>
                 <button id="tradition-save-btn" onclick="handleSaveTradition()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-lg hover:bg-indigo-700 transition">
@@ -667,26 +672,26 @@
             <div class="flex justify-between items-start mb-8">
                 <div>
                     <h2 id="memory-modal-title-text" class="text-3xl font-extrabold text-slate-800">Add Historical Milestone</h2>
-                    <p class="text-slate-400 font-medium">Capture a significant moment in our family's history.</p>
+                    <p class="text-slate-600 font-medium">Capture a significant moment in our family's history.</p>
                 </div>
-                <button onclick="closeMemoryModal()" class="text-slate-300 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
+                <button onclick="closeMemoryModal()" class="text-slate-500 hover:text-slate-600 transition"><i class="fas fa-times text-2xl"></i></button>
             </div>
 
             <div class="space-y-6">
                 <input type="hidden" id="mem-id">
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Milestone Title</label>
+                        <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Milestone Title</label>
                         <input type="text" id="mem-title" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
                     </div>
                     <div class="space-y-2">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Year</label>
+                        <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Year</label>
                         <input type="text" id="mem-year" placeholder="e.g. 1954" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold">
                     </div>
                 </div>
                 <div class="space-y-2">
                     <div class="flex justify-between items-center px-1">
-                        <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Description</label>
+                        <label class="text-xs font-black text-slate-600 uppercase tracking-widest">Description</label>
                         <button onclick="startDictation('mem-description', 'hi-IN')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 transition">
                             <i class="fas fa-microphone"></i> Dictate (Hindi)
                         </button>
@@ -698,7 +703,7 @@
                     <textarea id="mem-description" rows="4" class="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-medium" placeholder="Describe this historical event..."></textarea>
                 </div>
                 <div class="space-y-2">
-                    <label class="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Milestone Photo</label>
+                    <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Milestone Photo</label>
                     <input type="file" id="mem-photo" accept="image/*" class="w-full">
                 </div>
                 <button id="memory-save-btn" onclick="handleSaveMemory()" class="w-full bg-indigo-600 text-white py-5 rounded-[2rem] font-bold text-lg hover:bg-indigo-700 transition">
@@ -711,7 +716,7 @@
     <!-- Tradition Detail Modal -->
     <div id="tradition-detail-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[120] px-4 backdrop-blur-sm">
         <div class="bg-white rounded-[2rem] max-w-4xl w-full shadow-2xl relative overflow-hidden flex flex-col h-[85vh]">
-            <button onclick="closeTraditionModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition z-10 bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm">
+            <button onclick="closeTraditionModal()" class="absolute top-4 right-4 text-slate-600 hover:text-slate-600 transition z-10 bg-white w-10 h-10 rounded-full flex items-center justify-center shadow-sm">
                 <i class="fas fa-times text-xl"></i>
             </button>
             <div class="flex-1 overflow-y-auto">
@@ -723,11 +728,11 @@
 
                     <div id="tradition-interaction" class="mt-12 pt-8 border-t border-slate-100">
                         <div class="flex items-center gap-6 mb-8">
-                            <button id="tradition-like-btn" class="flex items-center gap-2 text-slate-400 hover:text-pink-500 transition group">
+                            <button id="tradition-like-btn" class="flex items-center gap-2 text-slate-600 hover:text-pink-500 transition group">
                                 <i class="far fa-heart text-2xl group-hover:scale-125 transition"></i>
                                 <span id="tradition-like-count" class="font-bold text-lg">0</span>
                             </button>
-                            <div class="flex items-center gap-2 text-slate-400">
+                            <div class="flex items-center gap-2 text-slate-600">
                                 <i class="far fa-comment text-2xl"></i>
                                 <span id="tradition-comment-count" class="font-bold text-lg">0</span>
                             </div>
@@ -1131,7 +1136,7 @@
                         </div>
                         <div class="p-6">
                             <h3 class="font-bold text-slate-800 text-lg mb-1 truncate">${rec.title}</h3>
-                            <p class="text-xs text-slate-400 mb-4">By ${rec.authorName}</p>
+                            <p class="text-xs text-slate-600 mb-4">By ${rec.authorName}</p>
                             <div class="flex justify-between items-center text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">
                                 <span>${(rec.ingredients || []).length} Ingredients</span>
                                 <span>View Recipe <i class="fas fa-arrow-right ml-1"></i></span>
@@ -1154,7 +1159,7 @@
                     grid.innerHTML = `
                         <div class="col-span-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
                             <i class="fas fa-utensils text-4xl text-slate-100 mb-4"></i>
-                            <p class="text-slate-400 italic">No recipes shared yet. Cook something up!</p>
+                            <p class="text-slate-600 italic">No recipes shared yet. Cook something up!</p>
                         </div>
                     `;
                 }
@@ -1191,8 +1196,8 @@
                         </div>
                         <div class="p-6">
                             <h3 class="font-bold text-slate-800 text-lg mb-1 truncate">${trad.title}</h3>
-                            <p class="text-xs text-slate-400 mb-4">By ${trad.authorName}</p>
-                            <p class="text-sm text-slate-500 line-clamp-2 mb-4">${trad.description}</p>
+                            <p class="text-xs text-slate-600 mb-4">By ${trad.authorName}</p>
+                            <p class="text-sm text-slate-700 line-clamp-2 mb-4">${trad.description}</p>
                             <div class="flex justify-end text-[10px] font-bold text-indigo-500 uppercase tracking-tighter">
                                 <span>Read More <i class="fas fa-arrow-right ml-1"></i></span>
                             </div>
@@ -1214,7 +1219,7 @@
                     grid.innerHTML = `
                         <div class="col-span-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
                             <i class="fas fa-scroll text-4xl text-slate-100 mb-4"></i>
-                            <p class="text-slate-400 italic">No traditions shared yet. Tell us a family story!</p>
+                            <p class="text-slate-600 italic">No traditions shared yet. Tell us a family story!</p>
                         </div>
                     `;
                 }
@@ -1466,13 +1471,18 @@
             try {
                 if (!isRetry) {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
+
+                    // Improved MimeType detection for iOS/Mobile support
+                    const types = ["audio/webm", "audio/mp4", "audio/ogg", "audio/wav"];
+                    const supportedType = types.find(type => MediaRecorder.isTypeSupported(type));
+
+                    mediaRecorder = new MediaRecorder(stream, supportedType ? { mimeType: supportedType } : {});
                     audioChunks = [];
                     mediaRecorder.ondataavailable = (e) => {
                         if (e.data.size > 0) audioChunks.push(e.data);
                     };
                     mediaRecorder.onstop = () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const audioBlob = new Blob(audioChunks, { type: supportedType || 'audio/wav' });
                         const audioUrl = URL.createObjectURL(audioBlob);
                         if (audioEl) {
                             audioEl.src = audioUrl;
@@ -1654,7 +1664,7 @@
                 onSnapshot(query(collection(db, "pending_updates")), (snap) => {
                     updateList.innerHTML = "";
                     if (snap.empty) {
-                        updateList.innerHTML = `<div class="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 col-span-full"><p class="text-slate-400 font-medium">No pending information updates.</p></div>`;
+                        updateList.innerHTML = `<div class="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 col-span-full"><p class="text-slate-600 font-medium">No pending information updates.</p></div>`;
                     }
                     snap.forEach(docSnap => {
                         const data = docSnap.data();
@@ -1666,7 +1676,7 @@
                                 <div class="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black">${data.name.charAt(0)}</div>
                                 <div>
                                     <p class="font-bold text-slate-800">${data.name}</p>
-                                    <p class="text-[10px] text-slate-400 font-bold uppercase">Requested by ${data.requestedByName || 'Member'}</p>
+                                    <p class="text-[10px] text-slate-600 font-bold uppercase">Requested by ${data.requestedByName || 'Member'}</p>
                                 </div>
                             </div>
                             <div class="flex gap-2">
@@ -1682,7 +1692,7 @@
                 onSnapshot(query(collection(db, "deletion_requests"), where("status", "==", "PENDING")), (snap) => {
                     deleteList.innerHTML = "";
                     if (snap.empty) {
-                        deleteList.innerHTML = `<div class="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 col-span-full"><p class="text-slate-400 font-medium">No pending deletion requests.</p></div>`;
+                        deleteList.innerHTML = `<div class="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 col-span-full"><p class="text-slate-600 font-medium">No pending deletion requests.</p></div>`;
                     }
                     snap.forEach(docSnap => {
                         const data = docSnap.data();
@@ -1693,12 +1703,12 @@
                             <div class="flex-1">
                                 <p class="text-xs font-black text-indigo-600 uppercase tracking-widest mb-1">${data.collectionName.slice(0,-1)} Deletion</p>
                                 <p class="font-bold text-slate-800">${data.title}</p>
-                                <p class="text-sm text-slate-500 italic mt-2">"${data.reason}"</p>
-                                <p class="text-[9px] text-slate-400 mt-2">Requested by ${data.requestedByName}</p>
+                                <p class="text-sm text-slate-700 italic mt-2">"${data.reason}"</p>
+                                <p class="text-[9px] text-slate-600 mt-2">Requested by ${data.requestedByName}</p>
                             </div>
                             <div class="flex gap-2">
                                 <button onclick="approveDeletionRequest('${id}')" class="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold text-xs hover:bg-red-500 hover:text-white transition">Delete Content</button>
-                                <button onclick="rejectDeletionRequest('${id}')" class="px-4 py-2 bg-slate-50 text-slate-500 rounded-xl font-bold text-xs hover:bg-slate-500 hover:text-white transition">Reject</button>
+                                <button onclick="rejectDeletionRequest('${id}')" class="px-4 py-2 bg-slate-50 text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-500 hover:text-white transition">Reject</button>
                             </div>
                         `;
                         deleteList.appendChild(card);
@@ -1709,7 +1719,7 @@
                 onSnapshot(query(collection(db, "relationship_overrides"), where("status", "==", "PENDING")), (snap) => {
                     overrideList.innerHTML = "";
                     if (snap.empty) {
-                        overrideList.innerHTML = `<div class="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 col-span-full"><p class="text-slate-400 font-medium">No pending relationship overrides.</p></div>`;
+                        overrideList.innerHTML = `<div class="py-12 text-center bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 col-span-full"><p class="text-slate-600 font-medium">No pending relationship overrides.</p></div>`;
                     }
                     snap.forEach(docSnap => {
                         const data = docSnap.data();
@@ -1720,11 +1730,11 @@
                             <div class="flex-1">
                                 <p class="text-xs font-black text-indigo-600 uppercase tracking-widest mb-1">Relationship Override</p>
                                 <p class="font-bold text-slate-800">${data.observerName} requests to call ${data.targetName} "${data.relationship}"</p>
-                                <p class="text-[9px] text-slate-400 mt-2">ID: ${id}</p>
+                                <p class="text-[9px] text-slate-600 mt-2">ID: ${id}</p>
                             </div>
                             <div class="flex gap-2">
                                 <button onclick="approveOverride('${id}')" class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs hover:bg-emerald-500 hover:text-white transition">Approve</button>
-                                <button onclick="rejectOverride('${id}')" class="px-4 py-2 bg-slate-50 text-slate-500 rounded-xl font-bold text-xs hover:bg-slate-500 hover:text-white transition">Reject</button>
+                                <button onclick="rejectOverride('${id}')" class="px-4 py-2 bg-slate-50 text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-500 hover:text-white transition">Reject</button>
                             </div>
                         `;
                         overrideList.appendChild(card);
@@ -1849,56 +1859,56 @@
                 }
 
                 const card = document.createElement('div');
-                card.className = "bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl hover:border-indigo-100 transition duration-300 flex flex-col";
+                card.className = "glass-card p-6 shadow-xl hover:border-indigo-500/50 transition duration-300 flex flex-col group";
                 card.innerHTML = `
                     <div class="flex items-center gap-5 mb-5">
-                        <div class="w-16 h-16 rounded-2xl bg-indigo-50 overflow-hidden ring-4 ring-slate-50 flex-shrink-0">
-                            ${member.photoUrl ? `<img src="${member.photoUrl}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-indigo-200 text-3xl font-bold">${member.name.charAt(0)}</div>`}
+                        <div class="w-16 h-16 rounded-2xl bg-white/5 overflow-hidden ring-4 ring-white/5 flex-shrink-0">
+                            ${member.photoUrl ? `<img src="${member.photoUrl}" class="w-full h-full object-cover">` : `<div class="flex items-center justify-center h-full text-[#D9C7A3]/20 text-3xl font-bold">${member.name.charAt(0)}</div>`}
                         </div>
                         <div class="min-w-0">
-                            <h3 class="font-extrabold text-slate-800 leading-tight truncate">${member.name}</h3>
-                            <p class="text-indigo-600 text-xs font-bold bg-indigo-50 px-2 py-0.5 rounded-lg inline-block mt-1">${relationship}</p>
+                            <h3 class="font-extrabold text-[#D9C7A3] leading-tight truncate">${member.name}</h3>
+                            <p class="text-indigo-400 text-xs font-bold bg-indigo-400/10 px-2 py-0.5 rounded-lg inline-block mt-1">${relationship}</p>
                         </div>
                     </div>
 
-                    <div class="space-y-3 text-sm text-slate-500 mb-6 flex-grow">
+                    <div class="space-y-3 text-sm text-[#D9C7A3]/80 mb-6 flex-grow">
                         <div class="grid grid-cols-2 gap-2">
-                            <p class="flex items-center gap-2"><i class="fas fa-cake-candles text-indigo-300 w-4"></i> ${member.dateOfBirth}</p>
-                            ${member.marriageDate ? `<p class="flex items-center gap-2"><i class="fas fa-ring text-pink-300 w-4"></i> ${member.marriageDate}</p>` : ''}
-                            ${member.bereavementDate ? `<p class="flex items-center gap-2 text-slate-400 col-span-2"><i class="fas fa-dove w-4"></i> Passed: ${member.bereavementDate}</p>` : ''}
+                            <p class="flex items-center gap-2"><i class="fas fa-cake-candles text-indigo-400/60 w-4"></i> ${member.dateOfBirth}</p>
+                            ${member.marriageDate ? `<p class="flex items-center gap-2"><i class="fas fa-ring text-pink-400/60 w-4"></i> ${member.marriageDate}</p>` : ''}
+                            ${member.bereavementDate ? `<p class="flex items-center gap-2 text-[#D9C7A3]/40 col-span-2"><i class="fas fa-dove w-4"></i> Passed: ${member.bereavementDate}</p>` : ''}
                         </div>
 
-                        ${member.spouseName ? `<p class="flex items-center gap-2"><i class="fas fa-heart text-red-300 w-4"></i> <span class="text-xs">Spouse:</span> <span class="font-semibold text-slate-700">${member.spouseName}</span></p>` : ''}
+                        ${member.spouseName ? `<p class="flex items-center gap-2"><i class="fas fa-heart text-red-400/60 w-4"></i> <span class="text-xs">Spouse:</span> <span class="font-semibold text-[#D9C7A3]">${member.spouseName}</span></p>` : ''}
 
-                        <div class="bg-slate-50 p-3 rounded-xl space-y-1">
-                            ${member.fatherName ? `<p class="text-[11px] flex items-center gap-2"><i class="fas fa-user-tie text-slate-300"></i> Father: <span class="font-medium text-slate-600">${member.fatherName}</span></p>` : ''}
-                            ${member.motherName ? `<p class="text-[11px] flex items-center gap-2"><i class="fas fa-user-nurse text-slate-300"></i> Mother: <span class="font-medium text-slate-600">${member.motherName}</span></p>` : ''}
+                        <div class="bg-black/20 p-3 rounded-xl space-y-1">
+                            ${member.fatherName ? `<p class="text-[11px] flex items-center gap-2"><i class="fas fa-user-tie text-[#D9C7A3]/40"></i> Father: <span class="font-medium text-[#D9C7A3]/60">${member.fatherName}</span></p>` : ''}
+                            ${member.motherName ? `<p class="text-[11px] flex items-center gap-2"><i class="fas fa-user-nurse text-[#D9C7A3]/40"></i> Mother: <span class="font-medium text-[#D9C7A3]/60">${member.motherName}</span></p>` : ''}
                         </div>
 
-                        ${member.immediateFamily ? `<p class="text-[10px] bg-indigo-50/30 p-2 rounded-lg text-indigo-700/70 border border-indigo-50/50">${member.immediateFamily}</p>` : ''}
+                        ${member.immediateFamily ? `<p class="text-[10px] bg-indigo-900/20 p-2 rounded-lg text-indigo-300 border border-indigo-500/10">${member.immediateFamily}</p>` : ''}
 
                         <div class="space-y-1">
-                            <p class="flex items-start gap-2"><i class="fas fa-location-dot text-indigo-300 w-4 mt-1"></i> <span>${member.location || 'Location Not Specified'}${member.address ? `<br><span class="text-[11px] opacity-75">${member.address}</span>` : ''}</span></p>
-                            ${member.email ? `<p class="flex items-center gap-2 text-xs"><i class="fas fa-envelope text-indigo-300 w-4"></i> <span class="truncate">${member.email}</span></p>` : ''}
+                            <p class="flex items-start gap-2"><i class="fas fa-location-dot text-indigo-400/60 w-4 mt-1"></i> <span>${member.location || 'Location Not Specified'}${member.address ? `<br><span class="text-[11px] opacity-50">${member.address}</span>` : ''}</span></p>
+                            ${member.email ? `<p class="flex items-center gap-2 text-xs"><i class="fas fa-envelope text-indigo-400/60 w-4"></i> <span class="truncate">${member.email}</span></p>` : ''}
                         </div>
                     </div>
 
-                    <div class="flex gap-2 pt-4 border-t border-slate-50 mt-auto items-center">
+                    <div class="flex gap-2 pt-4 border-t border-white/5 mt-auto items-center">
                          <div class="flex gap-1 flex-grow overflow-x-auto scrollbar-hide py-1">
-                            <button onclick="startChat('${member.id}', '${member.name}')" title="Send DM" class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-500 flex-shrink-0 flex items-center justify-center hover:bg-indigo-500 hover:text-white transition text-xs"><i class="fas fa-paper-plane"></i></button>
-                            ${member.phoneNumber ? `<a href="https://wa.me/${member.phoneNumber.replace(/\D/g,'')}" target="_blank" title="WhatsApp" class="w-8 h-8 rounded-lg bg-green-50 text-green-500 flex-shrink-0 flex items-center justify-center hover:bg-green-500 hover:text-white transition text-xs"><i class="fab fa-whatsapp"></i></a>` : ''}
-                            ${member.facebookUrl ? `<a href="${member.facebookUrl}" target="_blank" title="Facebook" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex-shrink-0 flex items-center justify-center hover:bg-blue-600 hover:text-white transition text-xs"><i class="fab fa-facebook-f"></i></a>` : ''}
-                            ${member.instagramUrl ? `<a href="${member.instagramUrl}" target="_blank" title="Instagram" class="w-8 h-8 rounded-lg bg-pink-50 text-pink-500 flex-shrink-0 flex items-center justify-center hover:bg-pink-600 hover:text-white transition text-xs"><i class="fab fa-instagram"></i></a>` : ''}
-                            ${member.youtubeUrl ? `<a href="${member.youtubeUrl}" target="_blank" title="YouTube" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex-shrink-0 flex items-center justify-center hover:bg-red-600 hover:text-white transition text-xs"><i class="fab fa-youtube"></i></a>` : ''}
+                            <button onclick="startChat('${member.id}', '${member.name}')" title="Send DM" class="w-8 h-8 rounded-lg bg-white/5 text-indigo-400 flex-shrink-0 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition text-xs"><i class="fas fa-paper-plane"></i></button>
+                            ${member.phoneNumber ? `<a href="https://wa.me/${member.phoneNumber.replace(/\D/g,'')}" target="_blank" title="WhatsApp" class="w-8 h-8 rounded-lg bg-white/5 text-green-400 flex-shrink-0 flex items-center justify-center hover:bg-green-600 hover:text-white transition text-xs"><i class="fab fa-whatsapp"></i></a>` : ''}
+                            ${member.facebookUrl ? `<a href="${member.facebookUrl}" target="_blank" title="Facebook" class="w-8 h-8 rounded-lg bg-white/5 text-blue-400 flex-shrink-0 flex items-center justify-center hover:bg-blue-600 hover:text-white transition text-xs"><i class="fab fa-facebook-f"></i></a>` : ''}
+                            ${member.instagramUrl ? `<a href="${member.instagramUrl}" target="_blank" title="Instagram" class="w-8 h-8 rounded-lg bg-white/5 text-pink-400 flex-shrink-0 flex items-center justify-center hover:bg-pink-600 hover:text-white transition text-xs"><i class="fab fa-instagram"></i></a>` : ''}
+                            ${member.youtubeUrl ? `<a href="${member.youtubeUrl}" target="_blank" title="YouTube" class="w-8 h-8 rounded-lg bg-white/5 text-red-400 flex-shrink-0 flex items-center justify-center hover:bg-red-600 hover:text-white transition text-xs"><i class="fab fa-youtube"></i></a>` : ''}
                          </div>
 
                          ${(currentUser.isAdmin || currentUser.isEditor) ? `
-                            <button onclick="openEditModal('${member.id}')" title="Edit Member" class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-600 hover:text-white transition text-xs"><i class="fas fa-edit"></i></button>
-                            ${currentUser.isAdmin ? `<button onclick="handleDeleteMember('${member.id}', '${member.name}')" title="Delete Member" class="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-600 hover:text-white transition text-xs"><i class="fas fa-trash"></i></button>` : ''}
+                            <button onclick="openEditModal('${member.id}')" title="Edit Member" class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center hover:bg-indigo-700 transition text-xs"><i class="fas fa-edit"></i></button>
+                            ${currentUser.isAdmin ? `<button onclick="handleDeleteMember('${member.id}', '${member.name}')" title="Delete Member" class="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center hover:bg-red-700 transition text-xs"><i class="fas fa-trash"></i></button>` : ''}
                          ` : (member.id === currentUser.id ? `
-                            <button onclick="openEditModal('${member.id}', true)" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition">Request Change</button>
+                            <button onclick="openEditModal('${member.id}', true)" class="text-[10px] font-bold text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">Request Change</button>
                          ` : `
-                            <button onclick="openEditModal('${member.id}', false, true)" class="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg hover:bg-slate-200 hover:text-slate-600 transition">View Profile</button>
+                            <button onclick="openEditModal('${member.id}', false, true)" class="text-[10px] font-bold text-[#D9C7A3] bg-white/5 px-3 py-1.5 rounded-lg hover:bg-white/10 transition">View Profile</button>
                          `)}
                     </div>
                 `;
@@ -1919,7 +1929,7 @@
                     item.innerHTML = `
                         <div class="flex justify-between items-start mb-4">
                             <h3 class="font-extrabold text-xl text-slate-800 tracking-tight">${disc.title}</h3>
-                            <span class="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full uppercase tracking-widest">${new Date(disc.timestamp).toLocaleDateString()}</span>
+                            <span class="text-[10px] font-bold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-full uppercase tracking-widest">${new Date(disc.timestamp).toLocaleDateString()}</span>
                         </div>
                         <p class="text-slate-600 mb-8 leading-relaxed">${disc.content}</p>
                         ${disc.type === 'POLL' && disc.pollOptions ? `
@@ -1938,7 +1948,7 @@
                             </div>
                             <div>
                                 <p class="font-bold text-slate-700 text-sm">${disc.userName || 'Anonymous'}</p>
-                                <p class="text-slate-400 text-xs">${disc.comments ? disc.comments.length : 0} family comments</p>
+                                <p class="text-slate-600 text-xs">${disc.comments ? disc.comments.length : 0} family comments</p>
                             </div>
                         </div>
                     `;
@@ -1965,7 +1975,7 @@
                         </div>
                         <div class="flex-1 min-w-0">
                             <p class="font-bold text-slate-800 text-sm truncate">${m.name}</p>
-                            <p class="text-[10px] text-slate-400 truncate">Family Member</p>
+                            <p class="text-[10px] text-slate-600 truncate">Family Member</p>
                         </div>
                     `;
                     list.appendChild(el);
@@ -2016,14 +2026,37 @@
             if (!text || !activeChannelId) return;
             input.value = "";
             try {
-                await setDoc(doc(collection(db, "messages")), {
+                await addDoc(collection(db, "messages"), {
                     channelId: activeChannelId,
                     senderId: currentUser.id,
+                    senderName: currentUser.name,
                     text: text,
                     timestamp: Date.now()
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error("Message Send Error:", e);
+                alert("Failed to send message. Please try again.");
+            }
         };
+
+        // Global listeners for input Enter keys
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                if (document.activeElement.id === 'msg-input') sendMessage();
+                if (document.activeElement.id === 'comment-input') {
+                    const submitBtn = document.getElementById('submit-comment');
+                    if (submitBtn) submitBtn.click();
+                }
+                if (document.activeElement.id === 'recipe-comment-input') {
+                    const submitBtn = document.getElementById('recipe-comment-submit');
+                    if (submitBtn) submitBtn.click();
+                }
+                if (document.activeElement.id === 'tradition-comment-input') {
+                    const submitBtn = document.getElementById('tradition-comment-submit');
+                    if (submitBtn) submitBtn.click();
+                }
+            }
+        });
 
         // Gallery Logic
         async function loadGallery() {
@@ -2092,13 +2125,13 @@
                 const commentList = document.getElementById('modal-comments');
                 commentList.innerHTML = comments.map(c => `
                     <div class="flex gap-3">
-                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 shrink-0">${c.userName.charAt(0)}</div>
+                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-600 shrink-0">${(c.userName || "U").charAt(0)}</div>
                         <div class="flex-1">
                             <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                                 <p class="text-xs font-black text-indigo-600 mb-1">${c.userName}</p>
                                 <p class="text-sm text-slate-600 leading-relaxed">${c.text}</p>
                             </div>
-                            <p class="text-[9px] text-slate-300 mt-1 ml-2">${new Date(c.timestamp).toLocaleTimeString()}</p>
+                            <p class="text-[9px] text-slate-500 mt-1 ml-2">${new Date(c.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                         </div>
                     </div>
                 `).join('');
@@ -2128,14 +2161,19 @@
             input.value = "";
 
             const photoRef = doc(db, "memories", photoId);
-            await updateDoc(photoRef, {
-                comments: arrayUnion({
-                    userId: currentUser.id,
-                    userName: currentUser.name,
-                    text: text,
-                    timestamp: Date.now()
-                })
-            });
+            try {
+                await updateDoc(photoRef, {
+                    comments: arrayUnion({
+                        userId: currentUser.id,
+                        userName: currentUser.name,
+                        text: text,
+                        timestamp: Date.now()
+                    })
+                });
+            } catch (e) {
+                console.error("Gallery Comment Error:", e);
+                alert("Failed to post comment. Please try again.");
+            }
         }
 
         // Family Tree Rendering Logic
@@ -2259,7 +2297,7 @@
                     </div>
                 </div>
                 <p class="text-[11px] font-black text-slate-800 leading-tight mb-0.5 px-1 truncate w-full">${m.name}</p>
-                <p class="text-[7px] font-bold text-slate-300 uppercase tracking-tighter">${m.familyId}</p>
+                <p class="text-[7px] font-bold text-slate-500 uppercase tracking-tighter">${m.familyId}</p>
             `;
             node.onclick = () => openEditModal(m.id, false, true);
             container.appendChild(node);
@@ -2735,16 +2773,16 @@
                     const initial = (c.userName || 'U')[0].toUpperCase();
                     return `
                         <div class="flex gap-3 items-start animate-fade-in">
-                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 shrink-0">${initial}</div>
+                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-700 shrink-0">${initial}</div>
                             <div class="flex-1">
-                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-0.5">${c.userName}</p>
+                                <p class="text-[10px] font-black text-slate-600 uppercase tracking-tighter mb-0.5">${c.userName}</p>
                                 <p class="text-xs text-slate-600 bg-slate-50 p-3 rounded-2xl rounded-tl-none inline-block">${c.text}</p>
                             </div>
                         </div>
                     `;
                 }).join('');
                 if (comments.length === 0) {
-                    commentsList.innerHTML = `<p class="text-xs text-slate-300 italic">No comments yet. Be the first!</p>`;
+                    commentsList.innerHTML = `<p class="text-xs text-slate-500 italic">No comments yet. Be the first!</p>`;
                 }
                 commentsList.scrollTop = commentsList.scrollHeight;
             });
@@ -2754,14 +2792,19 @@
                 if (!text) return;
                 commentInput.value = "";
                 const docRef = doc(db, collectionName, docId);
-                await updateDoc(docRef, {
-                    comments: arrayUnion({
-                        text: text,
-                        userId: currentUser.id,
-                        userName: currentUser.name,
-                        timestamp: Date.now()
-                    })
-                });
+                try {
+                    await updateDoc(docRef, {
+                        comments: arrayUnion({
+                            text: text,
+                            userId: currentUser.id,
+                            userName: currentUser.name,
+                            timestamp: Date.now()
+                        })
+                    });
+                } catch (e) {
+                    console.error(`${collectionName} Comment Error:`, e);
+                    alert("Failed to post comment.");
+                }
             };
         }
 
@@ -2826,15 +2869,35 @@
         };
 
         function setupRealtimeMemoryLane() {
-            const q = query(collection(db, "memorylane"), orderBy("year", "asc"));
+            const q = collection(db, "memorylane");
             onSnapshot(q, (snap) => {
                 const timeline = document.getElementById('memory-timeline');
                 if (!timeline) return;
                 timeline.innerHTML = "";
 
+                const milestones = [];
                 snap.forEach(docSnap => {
                     const mem = docSnap.data();
                     mem.id = docSnap.id;
+
+                    // Parse year for robust sorting
+                    let sortYear = 0;
+                    const yearStr = (mem.year || "").toString().toUpperCase();
+                    const numericPart = parseInt(yearStr.replace(/[^0-9]/g, '')) || 0;
+
+                    if (yearStr.includes("BC")) {
+                        sortYear = -numericPart;
+                    } else {
+                        sortYear = numericPart;
+                    }
+                    mem.sortYear = sortYear;
+                    milestones.push(mem);
+                });
+
+                // Sort by sortYear ascending
+                milestones.sort((a, b) => a.sortYear - b.sortYear);
+
+                milestones.forEach(mem => {
                     const item = document.createElement('div');
                     item.className = "relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active";
                     item.innerHTML = `
@@ -2846,10 +2909,10 @@
                                 <div class="font-bold text-slate-900">${mem.title}</div>
                                 <time class="font-bold text-indigo-600">${mem.year}</time>
                             </div>
-                            <div class="text-slate-500 text-sm mb-4">${mem.description}</div>
+                            <div class="text-slate-700 text-sm mb-4">${mem.description}</div>
                             ${mem.imageUrl ? `<img src="${mem.imageUrl}" class="w-full h-40 object-cover rounded-2xl mb-4">` : ''}
                             <div class="flex justify-between items-center">
-                                 <span class="text-[10px] text-slate-400 font-bold uppercase">Added by ${mem.authorName}</span>
+                                 <span class="text-[10px] text-slate-600 font-bold uppercase">Added by ${mem.authorName}</span>
                                  <div class="flex gap-2">
                                      ${(currentUser.isAdmin || currentUser.id === mem.authorId) ? `
                                          <button onclick='openMemoryModal(${JSON.stringify(mem).replace(/'/g, "&apos;")})' class="text-indigo-400 hover:text-indigo-600 transition"><i class="fas fa-edit"></i></button>
@@ -2868,7 +2931,7 @@
                     timeline.innerHTML = `
                         <div class="py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-100">
                             <i class="fas fa-history text-4xl text-slate-100 mb-4"></i>
-                            <p class="text-slate-400 italic">No historical milestones added yet.</p>
+                            <p class="text-slate-600 italic">No historical milestones added yet.</p>
                         </div>
                     `;
                 }
