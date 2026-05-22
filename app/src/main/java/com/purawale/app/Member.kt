@@ -27,6 +27,11 @@ data class Member(
     val photoUrl: String? = null,
     val immediateFamily: String = "",
     val address: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val flatNumber: String? = null,
+    val floor: String? = null,
+    val landmark: String? = null,
     val password: String? = null,
     @get:PropertyName("isAdmin")
     @set:PropertyName("isAdmin")
@@ -46,7 +51,10 @@ data class Member(
     val youtubeUrl: String? = null,
     val requestedBy: String? = null,
     val requestedByName: String? = null,
-    val requestedRelationship: String? = null
+    val requestedRelationship: String? = null,
+    val points: Int = 0,
+    val level: Int = 1,
+    val badges: List<String> = emptyList()
 )
 
 @Keep

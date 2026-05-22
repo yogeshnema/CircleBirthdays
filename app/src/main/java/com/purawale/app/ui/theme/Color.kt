@@ -8,6 +8,7 @@ val LightBrown = Color(0xFFD7CCC8)
 val Cream = Color(0xFFEFEBE9)
 val OffWhite = Color(0xFFFAF7F2)
 val AccentGold = Color(0xFFFFD54F)
+val LightGolden = Color(0xFFF5E6BE)
 
 val DarkBrown = Color(0xFF263238)
 val SurfaceBrown = Color(0xFF3E2723)

@@ -21,7 +21,14 @@
 -keep class com.purawale.app.RelationshipOverride { *; }
 -keep class com.purawale.app.ChatChannel { *; }
 -keep class com.purawale.app.PollOption { *; }
+-keep class com.purawale.app.AppNotification { *; }
 
 # Also keep any classes used in Room
 -keep class com.purawale.app.AppDatabase { *; }
 -keep interface com.purawale.app.MemberDao { *; }
+
+# Keep WorkManager Workers
+-keep class com.purawale.app.BirthdayWorker { *; }
+
+# Keep Utils for SHA-256 hashing
+-keep class com.purawale.app.UtilsKt { *; }

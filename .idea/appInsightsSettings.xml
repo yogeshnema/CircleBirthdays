@@ -20,14 +20,6 @@
         <entry key="Firebase Crashlytics">
           <value>
             <InsightsFilterSettings>
-              <option name="connection">
-                <ConnectionSetting>
-                  <option name="appId" value="com.purawale.app" />
-                  <option name="mobileSdkAppId" value="1:360638452983:android:f3d5c01adfd9188934aff2" />
-                  <option name="projectId" value="circlebirthdays" />
-                  <option name="projectNumber" value="360638452983" />
-                </ConnectionSetting>
-              </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
               <option name="timeIntervalDays" value="THIRTY_DAYS" />
               <option name="visibilityType" value="ALL" />

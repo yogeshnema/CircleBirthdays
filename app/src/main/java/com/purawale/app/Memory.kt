@@ -14,7 +14,8 @@ data class Memory(
     val timestamp: Long = System.currentTimeMillis(),
     val status: String = "PENDING", // PENDING, APPROVED
     val reactions: Map<String, List<String>> = emptyMap(), // emoji to list of userIds
-    val comments: List<Comment> = emptyList()
+    val comments: List<Comment> = emptyList(),
+    val taggedMemberIds: List<String> = emptyList()
 )
 
 @Keep

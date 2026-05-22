@@ -135,6 +135,10 @@ object FamilyUtils {
         val oId = observer.familyId
         if (tId.isEmpty() || oId.isEmpty()) return null
 
+        // Check for manual relationship overrides first
+        val manual = target.manualRelationships[observer.id]
+        if (!manual.isNullOrEmpty()) return manual
+
         // Mirror relationships if observer is a spouse, with specific in-law terms
         if (oId.endsWith("0")) {
             val partnerBase = oId.dropLast(1)

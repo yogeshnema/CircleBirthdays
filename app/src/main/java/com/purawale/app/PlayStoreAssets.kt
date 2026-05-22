@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.purawale.app.ui.screens.*
 import com.purawale.app.ui.theme.CircleBirthdaysTheme
 import java.time.LocalDate
 
@@ -190,21 +191,25 @@ fun Phone_Dashboard() {
         DashboardScreen(
             user = mockUser,
             allMembers = mockMembers,
-            pendingMembers = emptyList(),
-            deletionRequests = emptyList(),
-            channels = emptyList(),
+            pendingMembers = emptyList<Member>(),
+            deletionRequests = emptyList<DeletionRequest>(),
+            channels = emptyList<ChatChannel>(),
+            unreadNotificationsCount = 0,
             onNavigateToProfiles = {},
             onNavigateToGallery = {},
             onNavigateToDiscussions = {},
             onNavigateToMessages = {},
             onLogout = {},
+            onViewProfile = {},
             onEditProfile = {},
             onPasswordChange = {},
             onNavigateToCookbook = {},
             onNavigateToTraditions = {},
             onNavigateToMemoryLane = {},
             onNavigateToFamilyTree = {},
-            onNavigateToCalendar = {}
+            onNavigateToCalendar = {},
+            onNavigateToNotifications = {},
+            onNavigateToFamilyGames = {}
         )
     }
 }
@@ -217,7 +222,8 @@ fun Phone_FamilyTree() {
             currentUser = mockUser,
             members = mockMembers,
             onNavigateBack = {},
-            onMemberClick = {}
+            onViewMember = {},
+            onEditMember = {}
         )
     }
 }
@@ -228,8 +234,9 @@ fun Phone_Directory() {
     CircleBirthdaysTheme {
         ProfileListScreen(
             members = mockMembers,
-            pendingMembers = emptyList(),
+            pendingMembers = emptyList<Member>(),
             currentUser = mockUser,
+            onView = {},
             onEdit = {},
             onAdd = {},
             onBack = {},
@@ -238,8 +245,9 @@ fun Phone_Directory() {
             onApprove = {},
             onClearAll = {},
             onChat = {},
-            overrides = emptyList(),
-            onApproveOverride = {}
+            onApproveOverride = {},
+            onResetPassword = {},
+            onRemovePhoto = {}
         )
     }
 }
@@ -254,6 +262,7 @@ fun Phone_Traditions() {
                 Tradition(id="1", title="Ganesh Chaturthi", description="Our family's oldest tradition.", authorName = "Arjun"),
                 Tradition(id="2", title="Family Brunch", description="Every Sunday.", authorName = "Arjun")
             ),
+            allMembers = mockMembers,
             onBack = {},
             onAddTradition = { _, _ -> },
             onEditTradition = { _, _ -> },
@@ -274,6 +283,7 @@ fun Phone_Cookbook() {
                 Recipe(id="1", title="Puran Poli", authorName="Arjun", description="Traditional sweet flatbread.", category="Dessert"),
                 Recipe(id="2", title="Modak", authorName="Priya", description="Steamed dumplings.", category="Dessert")
             ),
+            allMembers = mockMembers,
             onBack = {},
             onAddRecipe = { _, _ -> },
             onEditRecipe = { _, _ -> },
@@ -294,12 +304,14 @@ fun Phone_Discussions() {
                 Discussion(id="1", userName="Arjun", title="Next Family Reunion", content="Should we host it in Mahabaleshwar this year?"),
                 Discussion(id="2", userName="Rahul", title="Cricket Match", content="Anyone up for a match this Sunday?")
             ),
+            allMembers = mockMembers,
             onBack = {},
             onPost = { _, _ -> },
             onDelete = {},
             onApprove = {},
             onAddComment = { _, _ -> },
-            onVote = { _, _, _ -> }
+            onVote = { _, _, _ -> },
+            onImageClick = {}
         )
     }
 }
@@ -308,7 +320,7 @@ fun Phone_Discussions() {
 @Composable
 fun Phone_Calendar() {
     CircleBirthdaysTheme {
-        CalendarScreen(allMembers = mockMembers, onBack = {})
+        CalendarScreen(allMembers = mockMembers, currentUser = mockUser, onBack = {})
     }
 }
 
@@ -322,12 +334,14 @@ fun Phone_Gallery() {
                 Memory(id="1", userName="Arjun", caption="Family trip to Mahabaleshwar", status="APPROVED"),
                 Memory(id="2", userName="Priya", caption="Aavya's first birthday!", status="APPROVED")
             ),
+            allMembers = mockMembers,
             onBack = {},
-            onUpload = { _, _ -> },
+            onUpload = { _, _, _ -> },
             onApprove = {},
             onDelete = {},
             onToggleReaction = { _, _ -> },
-            onAddComment = { _, _ -> }
+            onAddComment = { _, _ -> },
+            onImageClick = {}
         )
     }
 }
@@ -342,8 +356,9 @@ fun Phone_MemoryLane() {
                 Milestone(id="1", title="First Family Home", year="1970", description="Bought the ancestral home.", authorName="Arjun"),
                 Milestone(id="2", title="Grandpa's Graduation", year="1945", description="A proud moment for the family.", authorName="Arjun")
             ),
+            allMembers = mockMembers,
             onBack = {},
-            onAddMilestone = { _, _ -> },
+            onAddMilestone = { _, _, _, _ -> },
             onDeleteMilestone = {},
             onToggleReaction = { _, _ -> },
             onAddComment = { _, _ -> }

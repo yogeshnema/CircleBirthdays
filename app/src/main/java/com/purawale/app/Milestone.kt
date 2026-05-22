@@ -11,6 +11,7 @@ data class Milestone(
     val description: String = "",
     val year: String = "",
     val imageUrl: String = "",
+    val audioUrl: String = "",
     val location: String = "",
     val timestamp: Long = System.currentTimeMillis(),
     val authorId: String = "",
@@ -18,5 +19,6 @@ data class Milestone(
     val visibilityType: String = "GLOBAL", // GLOBAL, PRIVATE_FAMILY, OLD_IS_GOLD
     val familyContextId: String = "", // Base family ID for filtering
     val reactions: Map<String, List<String>> = emptyMap(),
-    val comments: List<Comment> = emptyList()
+    val comments: List<Comment> = emptyList(),
+    val taggedMemberIds: List<String> = emptyList()
 )

@@ -19,8 +19,18 @@ class BirthdayWorker(
         val today = Calendar.getInstance()
         val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
+        val prefs = applicationContext.getSharedPreferences("circle_prefs", Context.MODE_PRIVATE)
+        val currentUserId = prefs.getString("user_id", null)
+        val currentUser = members.find { it.id == currentUserId }
+        val isCurrentUserAdmin = currentUser?.isAdmin == true || currentUser?.phoneNumber == AppConfig.ADMIN_PHONE
+
         val upcomingBirthdays = members.filter { member ->
             if (member.dateOfBirth.isEmpty()) return@filter false
+            
+            // If current user is not admin, hide admin birthdays
+            val isTargetAdmin = member.isAdmin || member.phoneNumber == AppConfig.ADMIN_PHONE
+            if (!isCurrentUserAdmin && isTargetAdmin) return@filter false
+
             try {
                 val dob = dateFormat.parse(member.dateOfBirth) ?: return@filter false
                 val dobCal = Calendar.getInstance().apply { time = dob }

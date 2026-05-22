@@ -1,6 +1,5 @@
-package com.purawale.app
+package com.purawale.app.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,9 +12,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.purawale.app.Member
+import com.purawale.app.Message
+import com.purawale.app.FirebaseManager
+import com.purawale.app.ui.components.EventAvatar
+import com.purawale.app.ui.theme.LightGolden
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -43,6 +47,7 @@ fun ChatScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
@@ -50,18 +55,19 @@ fun ChatScreen(
                         EventAvatar(otherMember.photoUrl, otherMember.name)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text(otherMember.name, style = MaterialTheme.typography.titleMedium)
+                            Text(otherMember.name, style = MaterialTheme.typography.titleMedium, color = Color(0xFF3E2723), fontWeight = FontWeight.Bold)
                             if (otherMember.relationship != null) {
-                                Text(otherMember.relationship, style = MaterialTheme.typography.labelSmall)
+                                Text(otherMember.relationship, style = MaterialTheme.typography.labelSmall, color = Color(0xFF5D4037))
                             }
                         }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color(0xFF3E2723))
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = LightGolden)
             )
         },
         bottomBar = {

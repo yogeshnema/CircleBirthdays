@@ -20,7 +20,7 @@ object CsvHelper {
             val cols = line.split(Regex("[,\\t]|\\s{3,}")).map { it.trim().removeSurrounding("\"").trim() }
 
             // Skip headers or too-short lines
-            if (cols.size < 6) continue
+            if (cols.size < 8) continue
             if (cols[0].contains("Family ID", ignoreCase = true)) continue
             if (cols.getOrNull(2)?.contains("Name", ignoreCase = true) == true) continue
             if (cols.getOrNull(5)?.contains("DD", ignoreCase = true) == true) continue
