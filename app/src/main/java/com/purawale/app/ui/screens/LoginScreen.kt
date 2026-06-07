@@ -2,15 +2,27 @@ package com.purawale.app.ui.screens
 
 import android.content.Intent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.FamilyRestroom
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.purawale.app.AppConfig
 import com.purawale.app.Member
+import com.purawale.app.R
 import com.purawale.app.hash
 import com.purawale.app.t
 
@@ -46,21 +59,28 @@ fun LoginScreen(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.background),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            colorFilter = ColorFilter.tint(Color.Black.copy(alpha = 0.65f), BlendMode.Darken)
+        )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             // Language Toggle at the top
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .padding(bottom = 24.dp)
-                    .background(Color(0xFF5D4037).copy(alpha = 0.1f), RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(
                     "English",
-                    color = if (!isHindi) Color(0xFF3E2723) else Color(0xFF3E2723).copy(alpha = 0.5f),
+                    color = if (!isHindi) Color.White else Color.White.copy(alpha = 0.55f),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (!isHindi) FontWeight.ExtraBold else FontWeight.Medium
                 )
@@ -69,15 +89,15 @@ fun LoginScreen(
                     onCheckedChange = onLanguageToggle,
                     modifier = Modifier.scale(0.8f).padding(horizontal = 8.dp),
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color(0xFF5D4037),
-                        checkedTrackColor = Color(0xFFD7CCC8),
-                        uncheckedThumbColor = Color(0xFF8D6E63),
-                        uncheckedTrackColor = Color(0xFFEFEBE9)
+                        checkedThumbColor = Color(0xFF101522),
+                        checkedTrackColor = Color(0xFFFFC857),
+                        uncheckedThumbColor = Color(0xFFFFC857),
+                        uncheckedTrackColor = Color.White.copy(alpha = 0.20f)
                     )
                 )
                 Text(
                     "हिंदी",
-                    color = if (isHindi) Color(0xFF3E2723) else Color(0xFF3E2723).copy(alpha = 0.5f),
+                    color = if (isHindi) Color.White else Color.White.copy(alpha = 0.55f),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (isHindi) FontWeight.ExtraBold else FontWeight.Medium
                 )
@@ -85,9 +105,9 @@ fun LoginScreen(
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFEFEBE9).copy(alpha = 0.98f)),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.11f)),
                 shape = RoundedCornerShape(32.dp),
-                border = BorderStroke(2.dp, Color(0xFF5D4037))
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.24f))
             ) {
                 Column(
                     modifier = Modifier
@@ -99,14 +119,33 @@ fun LoginScreen(
                     Text(
                         t("Purawale\nHum aur Humare", "पुरावाले\nहम और हमारे"),
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            color = Color(0xFF3E2723),
+                            color = Color.White,
                             fontWeight = FontWeight.ExtraBold,
                             letterSpacing = 1.sp
                         ),
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(modifier = Modifier.height(36.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        listOf(Icons.Default.FamilyRestroom, Icons.Default.Cake, Icons.Default.PhotoLibrary).forEach { icon ->
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = Color.White.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+                            ) {
+                                Icon(
+                                    icon,
+                                    contentDescription = null,
+                                    tint = Color(0xFFFFC857),
+                                    modifier = Modifier.padding(12.dp).size(24.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(28.dp))
 
                     OutlinedTextField(
                         value = phone,
@@ -117,17 +156,18 @@ fun LoginScreen(
                             keyboardType = KeyboardType.Number
                         ),
                         modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.Phone, null) },
                         shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color(0xFF3E2723),
-                            unfocusedTextColor = Color(0xFF3E2723),
-                            focusedBorderColor = Color(0xFF3E2723),
-                            unfocusedBorderColor = Color(0xFF5D4037).copy(alpha = 0.5f),
-                            focusedLabelColor = Color(0xFF3E2723),
-                            unfocusedLabelColor = Color(0xFF5D4037),
-                            cursorColor = Color(0xFF3E2723),
-                            focusedContainerColor = Color.White.copy(alpha = 0.3f),
-                            unfocusedContainerColor = Color.White.copy(alpha = 0.3f)
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFFFFC857),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.28f),
+                            focusedLabelColor = Color(0xFFFFC857),
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.72f),
+                            cursorColor = Color(0xFFFFC857),
+                            focusedContainerColor = Color.White.copy(alpha = 0.08f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.08f)
                         )
                     )
 
@@ -140,17 +180,18 @@ fun LoginScreen(
                         placeholder = { Text(t("Enter your password", "पासवर्ड दर्ज करें")) },
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.Lock, null) },
                         shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color(0xFF3E2723),
-                            unfocusedTextColor = Color(0xFF3E2723),
-                            focusedBorderColor = Color(0xFF3E2723),
-                            unfocusedBorderColor = Color(0xFF5D4037).copy(alpha = 0.5f),
-                            focusedLabelColor = Color(0xFF3E2723),
-                            unfocusedLabelColor = Color(0xFF5D4037),
-                            cursorColor = Color(0xFF3E2723),
-                            focusedContainerColor = Color.White.copy(alpha = 0.3f),
-                            unfocusedContainerColor = Color.White.copy(alpha = 0.3f)
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFFFFC857),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.28f),
+                            focusedLabelColor = Color(0xFFFFC857),
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.72f),
+                            cursorColor = Color(0xFFFFC857),
+                            focusedContainerColor = Color.White.copy(alpha = 0.08f),
+                            unfocusedContainerColor = Color.White.copy(alpha = 0.08f)
                         )
                     )
 
@@ -173,7 +214,7 @@ fun LoginScreen(
                     ) {
                         Text(
                             t("Forgot Password?", "पासवर्ड भूल गए?"),
-                            color = Color(0xFF5D4037),
+                            color = Color(0xFFFFC857),
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.ExtraBold,
                             textDecoration = TextDecoration.Underline
@@ -209,7 +250,7 @@ fun LoginScreen(
                                 val storedHash = user?.password
                                 val inputHash = password.hash()
 
-                                val isValid = if (storedHash == null) {
+                                val isValid = if (storedHash.isNullOrBlank()) {
                                     password == "1234"
                                 } else {
                                     inputHash == storedHash
@@ -225,8 +266,8 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth().height(60.dp),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF3E2723),
-                            contentColor = Color.White
+                            containerColor = Color(0xFFFFC857),
+                            contentColor = Color(0xFF101522)
                         ),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
@@ -245,7 +286,7 @@ fun LoginScreen(
                     ) {
                         Text(
                             t("Privacy Policy", "गोपनीयता नीति"),
-                            color = Color(0xFF5D4037),
+                            color = Color.White.copy(alpha = 0.78f),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             textDecoration = TextDecoration.Underline

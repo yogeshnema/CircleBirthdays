@@ -74,11 +74,18 @@ fun AntakshariScreen(
         ), label = "scale"
     )
 
+    val isPlayingText = t("Pause", "रोकें")
+    val isNotPlayingText = t("Play", "चलाएं")
+    val permissionDeniedText = t("Permission denied to record audio", "ऑडियो रिकॉर्ड करने की अनुमति नहीं दी गई")
+    val errorPlayingAudioText = t("Error playing audio", "ऑडियो चलाने में त्रुटि")
+    val recordingTooShortText = t("Recording too short", "रिकॉर्डिंग बहुत छोटी है")
+    val recordingFailedPrefix = t("Recording failed: ", "रिकॉर्डिंग विफल रही: ")
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (!isGranted) {
-            Toast.makeText(context, "Permission denied to record audio", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, permissionDeniedText, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -206,8 +213,33 @@ fun AntakshariScreen(
                     state = listState,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp)
+                    contentPadding = PaddingValues(bottom = 148.dp)
                 ) {
+                    if (recordings.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(18.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.70f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(t("No songs yet", "अभी कोई गाना नहीं"), fontWeight = FontWeight.Bold)
+                                        Text(
+                                            t("Use the recorder when it is your turn.", "आपकी बारी आने पर रिकॉर्डर इस्तेमाल करें।"),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                     items(recordings.asReversed()) { rec ->
                         val isMe = rec["senderId"] == user.id
                         val senderName = if (isMe) t("You", "आप") else otherPlayerName
@@ -261,7 +293,7 @@ fun AntakshariScreen(
                                                     }
                                                 } catch (e: Exception) {
                                                     e.printStackTrace()
-                                                    Toast.makeText(context, "Error playing audio", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, errorPlayingAudioText, Toast.LENGTH_SHORT).show()
                                                 }
                                             }
                                         },
@@ -298,7 +330,8 @@ fun AntakshariScreen(
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
                     shadowElevation = 8.dp,
                     color = MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
@@ -369,12 +402,12 @@ fun AntakshariScreen(
                                             if (duration > 1000) {
                                                 audioFile?.let { onSendRecording(it) }
                                             } else {
-                                                Toast.makeText(context, "Recording too short", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, recordingTooShortText, Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     } catch (e: Exception) {
                                         e.printStackTrace()
-                                        Toast.makeText(context, "Recording failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "$recordingFailedPrefix${e.localizedMessage}", Toast.LENGTH_SHORT).show()
                                         mediaRecorder?.let { try { it.release() } catch (ex: Exception) {} }
                                         mediaRecorder = null
                                         isRecording = false

@@ -13,3 +13,13 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/src/main/java/com/purawale/app/AppConfig.kt
+google-services.json
+app/google-services.json
+public/config.js
+functions/.env
+*.jks
+*.keystore
+.kotlin/
+hs_err_pid*.log
+replay_pid*.log

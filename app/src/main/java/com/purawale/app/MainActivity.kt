@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.purawale.app.ui.components.AIChatAssistant
 import com.purawale.app.ui.notifications.NotificationCenterScreen
 import com.purawale.app.ui.screens.*
 import com.purawale.app.ui.theme.CircleBirthdaysTheme
@@ -128,9 +129,11 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
     }
 
     val members = viewModel.members
+    val allMembers = viewModel.allMembers
     val currentUser = viewModel.currentUser
     val currentScreen = viewModel.currentScreen
     val error = viewModel.error
+    val loginError = viewModel.loginError
     val isLoading = viewModel.isLoading
     val pendingMembers = viewModel.pendingMembers
     val deletionRequests = viewModel.deletionRequests
@@ -167,20 +170,22 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
             } else {
                 when (val screen = currentScreen) {
                     is Screen.Login -> LoginScreen(
-                        members = members,
+                        members = allMembers.ifEmpty { members },
                         onLoginSuccess = { phone -> viewModel.login(phone, prefs) },
-                        error = error,
+                        error = loginError ?: error,
                         isHindi = isHindi,
                         onLanguageToggle = { viewModel.toggleLanguage() }
                     )
                     is Screen.Dashboard -> currentUser?.let { user ->
                         DashboardScreen(
                             user = user,
-                            allMembers = members,
+                            allMembers = allMembers.ifEmpty { members },
                             pendingMembers = pendingMembers,
                             deletionRequests = deletionRequests,
                             channels = channels,
                             unreadNotificationsCount = unreadNotificationsCount,
+                            currentTreeId = viewModel.currentTreeId,
+                            onSwitchTree = { treeId -> viewModel.switchTree(treeId, prefs) },
                             onNavigateToProfiles = { viewModel.navigateTo(Screen.ProfileList) },
                             onNavigateToGallery = { viewModel.navigateTo(Screen.Gallery) },
                             onNavigateToDiscussions = { viewModel.navigateTo(Screen.Discussions) },
@@ -195,7 +200,13 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                             onNavigateToFamilyTree = { viewModel.navigateTo(Screen.FamilyTree) },
                             onNavigateToCalendar = { viewModel.navigateTo(Screen.Calendar) },
                             onNavigateToNotifications = { viewModel.navigateTo(Screen.Notifications) },
-                            onNavigateToFamilyGames = { viewModel.navigateTo(Screen.FamilyGames) }
+                            onNavigateToEmergency = { viewModel.navigateTo(Screen.Emergency) },
+                            onNavigateToFamilyGames = { viewModel.navigateTo(Screen.FamilyGames) },
+                            onNavigateToBusinessDirectory = { viewModel.navigateTo(Screen.BusinessDirectory) },
+                            onNavigateToAchievements = { viewModel.navigateTo(Screen.Achievements) },
+                            onNavigateToLoginLog = { viewModel.navigateTo(Screen.LoginLog) },
+                            onNavigateToActivityLog = { viewModel.navigateTo(Screen.ActivityLog) },
+                            onGenerateAICard = { member, type -> viewModel.navigateTo(Screen.AICardGenerator(member, type)) }
                         )
                     }
                     is Screen.ProfileList -> currentUser?.let { user ->
@@ -203,6 +214,7 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                             members = members,
                             pendingMembers = pendingMembers,
                             currentUser = user,
+                            currentTreeId = viewModel.currentTreeId,
                             onView = { member -> viewModel.navigateTo(Screen.EditProfile(member, isReadOnly = true)) },
                             onEdit = { member -> viewModel.navigateTo(Screen.EditProfile(member)) },
                             onAdd = { viewModel.navigateTo(Screen.EditProfile(null)) },
@@ -214,14 +226,17 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                             onChat = { member -> viewModel.navigateTo(Screen.Chat(member)) },
                             overrides = viewModel.relationshipOverrides,
                             onApproveOverride = { override -> viewModel.approveRelationshipOverride(override) },
-                            onResetPassword = { member -> viewModel.updatePassword(member.id, "123456") },
-                            onRemovePhoto = { member -> viewModel.saveMember(member.copy(photoUrl = ""), null) }
+                            onRejectOverride = { id -> viewModel.rejectRelationshipOverride(id) },
+                            onResetPassword = { member -> viewModel.updatePassword(member.id, "1234".hash()) },
+                            onRemovePhoto = { member -> viewModel.saveMember(member.copy(photoUrl = ""), null) },
+                            onRejectPending = { member -> viewModel.rejectPendingMember(member.id) }
                         )
                     }
                     is Screen.EditProfile -> currentUser?.let { user ->
                         EditProfileScreen(
                             member = screen.member,
                             currentUser = user,
+                            currentTreeId = viewModel.currentTreeId,
                             isReadOnly = screen.isReadOnly,
                             onSave = { member, uri -> 
                                 viewModel.saveMember(member, uri)
@@ -335,15 +350,27 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                         FamilyTreeScreen(
                             currentUser = user,
                             members = members,
-                            onNavigateBack = { viewModel.navigateTo(Screen.Dashboard) },
+                            currentTreeId = viewModel.currentTreeId,
+                            onNavigateBack = { 
+                                if (viewModel.currentTreeId != "primary") {
+                                    viewModel.switchTree("primary", prefs)
+                                } else {
+                                    viewModel.navigateTo(Screen.Dashboard)
+                                }
+                            },
                             onViewMember = { member -> viewModel.navigateTo(Screen.EditProfile(member, isReadOnly = true)) },
-                            onEditMember = { member -> viewModel.navigateTo(Screen.EditProfile(member)) }
+                            onEditMember = { member -> viewModel.navigateTo(Screen.EditProfile(member)) },
+                            onSwitchTree = { treeId ->
+                                viewModel.switchTree(treeId, prefs)
+                                viewModel.navigateTo(Screen.ProfileList)
+                            }
                         )
                     }
                     is Screen.Calendar -> currentUser?.let { user ->
                         CalendarScreen(
                             allMembers = members,
                             currentUser = user,
+                            currentTreeId = viewModel.currentTreeId,
                             onBack = { viewModel.navigateTo(Screen.Dashboard) }
                         )
                     }
@@ -470,7 +497,70 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                             onJoinSession = { session -> viewModel.joinGameSession(session) }
                         )
                     }
+                    is Screen.BusinessDirectory -> currentUser?.let { user ->
+                        BusinessDirectoryScreen(
+                            user = user,
+                            businesses = viewModel.businesses,
+                            onBack = { viewModel.navigateTo(Screen.Dashboard) },
+                            onAddBusiness = { viewModel.addBusiness(it) },
+                            onDeleteBusiness = { viewModel.deleteBusiness(it) }
+                        )
+                    }
+                    is Screen.Achievements -> currentUser?.let { user ->
+                        AchievementsScreen(
+                            user = user,
+                            achievements = viewModel.achievements,
+                            onBack = { viewModel.navigateTo(Screen.Dashboard) },
+                            onAddAchievement = { achievement, uri -> viewModel.addAchievement(achievement, uri) },
+                            onDeleteAchievement = { id -> viewModel.deleteAchievement(id) }
+                        )
+                    }
+                    is Screen.Emergency -> currentUser?.let { user ->
+                        EmergencyScreen(
+                            currentUser = user,
+                            onBack = { viewModel.navigateTo(Screen.Dashboard) }
+                        )
+                    }
+                    is Screen.LoginLog -> LoginLogScreen(
+                        members = allMembers,
+                        onBack = { viewModel.navigateTo(Screen.Dashboard) },
+                        onHome = { viewModel.navigateTo(Screen.Dashboard) }
+                    )
+                    is Screen.AICardGenerator -> currentUser?.let { user ->
+                        AICardGeneratorScreen(
+                            member = screen.member,
+                            eventType = screen.eventType,
+                            currentUser = user,
+                            allMembers = members,
+                            onBack = { viewModel.navigateTo(Screen.Dashboard) },
+                            aiDesignCache = viewModel.aiDesignCache,
+                            onUpdateCache = { viewModel.aiDesignCache = it }
+                        )
+                    }
+                    is Screen.ActivityLog -> ActivityLogScreen(
+                        logs = viewModel.activityLogs,
+                        members = allMembers,
+                        onBack = { viewModel.navigateTo(Screen.Dashboard) },
+                        onHome = { viewModel.navigateTo(Screen.Dashboard) }
+                    )
                 }
+            }
+
+            val isGameScreen = currentScreen is Screen.FamilyGames ||
+                    currentScreen is Screen.GameLobby ||
+                    currentScreen is Screen.SnakesAndLadders ||
+                    currentScreen is Screen.Chess ||
+                    currentScreen is Screen.Chaupad ||
+                    currentScreen is Screen.Hangman ||
+                    currentScreen is Screen.Rummy ||
+                    currentScreen is Screen.Antakshari
+
+            // AI Chat Assistant
+            if (currentScreen !is Screen.Login && !isGameScreen) {
+                AIChatAssistant(
+                    allMembers = allMembers,
+                    currentUser = currentUser
+                )
             }
         }
     }

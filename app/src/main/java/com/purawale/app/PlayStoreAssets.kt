@@ -209,7 +209,9 @@ fun Phone_Dashboard() {
             onNavigateToFamilyTree = {},
             onNavigateToCalendar = {},
             onNavigateToNotifications = {},
-            onNavigateToFamilyGames = {}
+            onNavigateToFamilyGames = {},
+            onNavigateToBusinessDirectory = {},
+            onNavigateToAchievements = {}
         )
     }
 }

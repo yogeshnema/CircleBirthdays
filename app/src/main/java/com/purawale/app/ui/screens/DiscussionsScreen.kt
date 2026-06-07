@@ -1,9 +1,9 @@
 package com.purawale.app.ui.screens
 
-import com.purawale.app.ui.components.SpeechToTextButton
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +31,9 @@ import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
 import com.canhub.cropper.CropImageView
 import com.purawale.app.*
+import com.purawale.app.ui.components.AppTopBar
+import com.purawale.app.ui.components.ScreenContainer
+import com.purawale.app.ui.components.SpeechToTextButton
 import com.purawale.app.ui.theme.LightGolden
 import java.util.*
 
@@ -50,9 +53,8 @@ fun DiscussionsScreen(
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var selectedDiscussionForDetail by remember { mutableStateOf<Discussion?>(null) }
-    val brown900 = Color(0xFF3E2723)
-    val brown800 = Color(0xFF5D4037)
-    val brown50 = Color(0xFFEFEBE9)
+    val gold = Color(0xFFFFC857)
+    val cardBackground = Color.White.copy(alpha = 0.08f)
 
     val visibleDiscussions = discussions
 
@@ -77,7 +79,7 @@ fun DiscussionsScreen(
             onDismissRequest = {
                 showCreateDialog = false
             },
-            title = { Text(t("Create Discussion", "चर्चा शुरू करें"), color = brown900, fontWeight = FontWeight.Bold) },
+            title = { Text(t("Create Discussion", "चर्चा शुरू करें"), color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Row {
@@ -85,21 +87,60 @@ fun DiscussionsScreen(
                             selected = type == "TEXT",
                             onClick = { type = "TEXT" },
                             label = { Text(t("Text", "टेक्स्ट")) },
-                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = brown800, selectedLabelColor = Color.White)
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = gold,
+                                selectedLabelColor = Color(0xFF080B14),
+                                labelColor = Color.White,
+                                containerColor = Color.White.copy(alpha = 0.1f)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = type == "TEXT",
+                                borderColor = Color.White.copy(alpha = 0.2f),
+                                selectedBorderColor = gold,
+                                borderWidth = 1.dp,
+                                selectedBorderWidth = 1.dp
+                            )
                         )
                         Spacer(Modifier.width(8.dp))
                         FilterChip(
                             selected = type == "IMAGE",
                             onClick = { type = "IMAGE" },
                             label = { Text(t("Image", "चित्र")) },
-                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = brown800, selectedLabelColor = Color.White)
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = gold,
+                                selectedLabelColor = Color(0xFF080B14),
+                                labelColor = Color.White,
+                                containerColor = Color.White.copy(alpha = 0.1f)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = type == "IMAGE",
+                                borderColor = Color.White.copy(alpha = 0.2f),
+                                selectedBorderColor = gold,
+                                borderWidth = 1.dp,
+                                selectedBorderWidth = 1.dp
+                            )
                         )
                         Spacer(Modifier.width(8.dp))
                         FilterChip(
                             selected = type == "POLL",
                             onClick = { type = "POLL" },
                             label = { Text(t("Poll", "पोल")) },
-                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = brown800, selectedLabelColor = Color.White)
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = gold,
+                                selectedLabelColor = Color(0xFF080B14),
+                                labelColor = Color.White,
+                                containerColor = Color.White.copy(alpha = 0.1f)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = type == "POLL",
+                                borderColor = Color.White.copy(alpha = 0.2f),
+                                selectedBorderColor = gold,
+                                borderWidth = 1.dp,
+                                selectedBorderWidth = 1.dp
+                            )
                         )
                     }
                     OutlinedTextField(
@@ -108,7 +149,15 @@ fun DiscussionsScreen(
                         label = { Text(t("Title", "शीर्षक")) },
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = { SpeechToTextButton(onResult = { title += it }) },
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = brown800, focusedLabelColor = brown800)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = gold,
+                            focusedLabelColor = gold,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = gold
+                        )
                     )
                     if (type == "TEXT" || type == "POLL") {
                         OutlinedTextField(
@@ -117,7 +166,15 @@ fun DiscussionsScreen(
                             label = { Text(if (type == "POLL") t("Poll Question", "पोल प्रश्न") else t("Content", "विषय")) },
                             modifier = Modifier.fillMaxWidth(),
                             trailingIcon = { SpeechToTextButton(onResult = { contentText += it }) },
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = brown800, focusedLabelColor = brown800)
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = gold,
+                                focusedLabelColor = gold,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                                unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                cursorColor = gold
+                            )
                         )
                     }
                     if (type == "IMAGE") {
@@ -137,13 +194,13 @@ fun DiscussionsScreen(
                         Button(
                             onClick = { photoPickerLauncher.launch("image/*") },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = brown800)
+                            colors = ButtonDefaults.buttonColors(containerColor = gold, contentColor = Color(0xFF080B14))
                         ) {
                             Text(if (selectedUri == null) t("Select Image", "चित्र चुनें") else t("Change Image", "चित्र बदलें"))
                         }
                     }
                     if (type == "POLL") {
-                        Text(t("Poll Options", "पोल विकल्प"), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp), color = brown900)
+                        Text(t("Poll Options", "पोल विकल्प"), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp), color = Color.White)
                         for ((index, opt) in pollOptions.withIndex()) {
                             OutlinedTextField(
                                 value = opt,
@@ -155,10 +212,18 @@ fun DiscussionsScreen(
                                 trailingIcon = { SpeechToTextButton(onResult = {
                                     pollOptions = pollOptions.toMutableList().apply { this[index] += it }
                                 }) },
-                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = brown800, focusedLabelColor = brown800)
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = gold,
+                                    focusedLabelColor = gold,
+                                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                                    unfocusedLabelColor = Color.White.copy(alpha = 0.7f),
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    cursorColor = gold
+                                )
                             )
                         }
-                        TextButton(onClick = { pollOptions = pollOptions + "" }) { Text(t("Add Option", "विकल्प जोड़ें"), color = brown800) }
+                        TextButton(onClick = { pollOptions = pollOptions + "" }) { Text(t("Add Option", "विकल्प जोड़ें"), color = gold) }
                     }
                 }
             },
@@ -168,7 +233,7 @@ fun DiscussionsScreen(
                     "POLL" -> pollOptions.filter { it.isNotBlank() }.size >= 2
                     else -> contentText.isNotBlank()
                 }
-                TextButton(
+                Button(
                     onClick = {
                         val disc = Discussion(
                             id = UUID.randomUUID().toString(),
@@ -182,15 +247,23 @@ fun DiscussionsScreen(
                         onPost(disc, selectedUri)
                         showCreateDialog = false
                     },
-                    enabled = isValid
-                ) { Text(t("Post", "पोस्ट करें"), color = if (isValid) brown800 else Color.Gray) }
+                    enabled = isValid,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = gold,
+                        contentColor = Color.Black,
+                        disabledContainerColor = gold.copy(alpha = 0.3f),
+                        disabledContentColor = Color.Black.copy(alpha = 0.5f)
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) { Text(t("Post", "पोस्ट करें"), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showCreateDialog = false
-                }) { Text(t("Cancel", "रद्द करें"), color = brown800) }
+                }) { Text(t("Cancel", "रद्द करें"), color = gold.copy(alpha = 0.7f)) }
             },
-            containerColor = Color.White
+            containerColor = Color(0xFF1A1C1E),
+            shape = RoundedCornerShape(28.dp)
         )
     }
 
@@ -201,10 +274,10 @@ fun DiscussionsScreen(
             onDismissRequest = {
                 selectedDiscussionForDetail = null
             },
-            title = { Text(disc.title, color = brown900, fontWeight = FontWeight.Bold) },
+            title = { Text(disc.title, color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
                 Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-                    Text(t("By ${disc.userName}", "${disc.userName} द्वारा"), style = MaterialTheme.typography.labelSmall, color = brown800)
+                    Text(t("By ${disc.userName}", "${disc.userName} द्वारा"), style = MaterialTheme.typography.labelSmall, color = gold)
                     Spacer(Modifier.height(8.dp))
                     if (disc.type == "IMAGE") {
                         AsyncImage(
@@ -228,7 +301,7 @@ fun DiscussionsScreen(
                             contentScale = ContentScale.Fit
                         )
                     } else {
-                        Text(disc.content, color = brown900)
+                        Text(disc.content, color = Color.White)
                     }
 
                     if (disc.type == "POLL" && disc.pollOptions != null) {
@@ -242,104 +315,120 @@ fun DiscussionsScreen(
                                 Row(horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         if (isVoted) {
-                                            Icon(Icons.Default.CheckCircle, null, tint = brown800, modifier = Modifier.size(16.dp).padding(end = 4.dp))
+                                            Icon(Icons.Default.CheckCircle, null, tint = gold, modifier = Modifier.size(16.dp).padding(end = 4.dp))
                                         }
-                                        Text(opt.text, fontWeight = if (isVoted) FontWeight.Bold else FontWeight.Normal, color = brown900)
+                                        Text(opt.text, fontWeight = if (isVoted) FontWeight.Bold else FontWeight.Normal, color = Color.White)
                                     }
-                                    Text(t("${opt.voterIds.size} votes", "${opt.voterIds.size} वोट"), style = MaterialTheme.typography.labelSmall, color = brown800)
+                                    Text(t("${opt.voterIds.size} votes", "${opt.voterIds.size} वोट"), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
                                 }
-                                LinearProgressIndicator(progress = { percentage }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape), color = brown800, trackColor = brown800.copy(alpha = 0.2f))
+                                LinearProgressIndicator(progress = { percentage }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape), color = gold, trackColor = Color.White.copy(alpha = 0.1f))
                             }
                         }
                     }
 
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = brown800.copy(alpha = 0.2f))
-                    Text(t("Comments", "टिप्पणियाँ"), style = MaterialTheme.typography.titleSmall, color = brown900)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp), color = Color.White.copy(alpha = 0.1f))
+                    Text(t("Comments", "टिप्पणियाँ"), style = MaterialTheme.typography.titleSmall, color = Color.White)
                     val visibleComments = disc.comments
                     for (comment in visibleComments) {
                         Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                            Text(if (comment.userName == "Admin") "Admin" else comment.userName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = brown900)
-                            Text(comment.text, style = MaterialTheme.typography.bodySmall, color = brown800)
+                            Text(if (comment.userName == "Admin") "Admin" else comment.userName, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = gold)
+                            Text(comment.text, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
                         }
                     }
                     OutlinedTextField(
                         value = commentText,
                         onValueChange = { commentText = it },
-                        placeholder = { Text(t("Add comment...", "अपनी टिप्पणी लिखें...")) },
+                        placeholder = { Text(t("Add comment...", "अपनी टिप्पणी लिखें..."), color = Color.White.copy(alpha = 0.5f)) },
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
                             Row {
                                 SpeechToTextButton(onResult = { commentText += it })
-                                IconButton(onClick = { if (commentText.isNotBlank()) { onAddComment(disc.id, commentText); commentText = "" } }) { Icon(Icons.AutoMirrored.Filled.Send, null, tint = brown800) }
+                                IconButton(onClick = { if (commentText.isNotBlank()) { onAddComment(disc.id, commentText); commentText = "" } }) { Icon(Icons.AutoMirrored.Filled.Send, null, tint = gold) }
                             }
                         },
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = brown800)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = gold,
+                            focusedLabelColor = gold,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = gold
+                        )
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    selectedDiscussionForDetail = null
-                }) { Text(t("Close", "बंद करें"), color = brown800) }
+                Button(
+                    onClick = {
+                        selectedDiscussionForDetail = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = gold,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) { Text(t("Close", "बंद करें"), fontWeight = FontWeight.Bold) }
             },
-            containerColor = Color.White
+            containerColor = Color(0xFF1A1C1E),
+            shape = RoundedCornerShape(28.dp)
         )
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        topBar = {
-            TopAppBar(
-                title = { Text(t("Discussions", "चर्चाएँ"), color = brown900, fontWeight = FontWeight.Bold) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = brown900) } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = LightGolden)
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showCreateDialog = true },
-                containerColor = brown800,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp)
-            ) { Icon(Icons.Default.Add, "Create Post") }
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier.padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp)
-        ) {
-            items(visibleDiscussions) { disc ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { selectedDiscussionForDetail = disc },
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(20.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(disc.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), color = brown900, fontWeight = FontWeight.Bold)
-                            if (disc.status == "PENDING") {
-                                Surface(color = Color(0xFFFFEBEE), shape = CircleShape) {
-                                    Text(t("PENDING", "लंबित"), color = Color(0xFFC62828), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+    ScreenContainer {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                AppTopBar(
+                    title = t("Discussions", "चर्चाएँ"),
+                    onBack = onBack
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { showCreateDialog = true },
+                    containerColor = gold,
+                    contentColor = Color(0xFF080B14),
+                    shape = RoundedCornerShape(16.dp)
+                ) { Icon(Icons.Default.Add, "Create Post") }
+            }
+        ) { padding ->
+            LazyColumn(
+                modifier = Modifier.padding(padding),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp)
+            ) {
+                items(visibleDiscussions) { disc ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { selectedDiscussionForDetail = disc },
+                        colors = CardDefaults.cardColors(containerColor = cardBackground),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(disc.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f), color = Color.White, fontWeight = FontWeight.Bold)
+                                if (disc.status == "PENDING") {
+                                    Surface(color = Color(0xFFFFEBEE).copy(alpha = 0.2f), shape = CircleShape) {
+                                        Text(t("PENDING", "लंबित"), color = Color(0xFFFFCDD2), style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                                    }
                                 }
                             }
-                        }
-                        Text(t("By ${if (disc.userName == "Admin") "Admin" else disc.userName} • ${disc.type}", "${if (disc.userName == "Admin") "Admin" else disc.userName} द्वारा • ${disc.type}"), style = MaterialTheme.typography.labelSmall, color = brown800.copy(alpha = 0.7f))
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = if (disc.type == "IMAGE") t("[Image Post]", "[चित्र पोस्ट]") else if (disc.content.length > 100) disc.content.take(100) + "..." else disc.content,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = brown900
-                        )
+                            Text(t("By ${if (disc.userName == "Admin") "Admin" else disc.userName} • ${disc.type}", "${if (disc.userName == "Admin") "Admin" else disc.userName} द्वारा • ${disc.type}"), style = MaterialTheme.typography.labelSmall, color = gold)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = if (disc.type == "IMAGE") t("[Image Post]", "[चित्र पोस्ट]") else if (disc.content.length > 100) disc.content.take(100) + "..." else disc.content,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
 
-                        Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text(t("${disc.comments.size} comments", "${disc.comments.size} टिप्पणियाँ"), style = MaterialTheme.typography.labelSmall, color = brown800.copy(alpha = 0.7f))
-                            if (user.isAdmin) {
-                                Row {
-                                    if (disc.status == "PENDING") {
-                                        IconButton(onClick = { onApprove(disc.id) }) { Icon(Icons.Default.Check, "Approve", tint = Color(0xFF2E7D32)) }
+                            Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(t("${disc.comments.size} comments", "${disc.comments.size} टिप्पणियाँ"), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
+                                if (user.isAdmin) {
+                                    Row {
+                                        if (disc.status == "PENDING") {
+                                            IconButton(onClick = { onApprove(disc.id) }) { Icon(Icons.Default.Check, "Approve", tint = Color(0xFF81C784)) }
+                                        }
+                                        IconButton(onClick = { onDelete(disc.id) }) { Icon(Icons.Default.Delete, "Delete", tint = Color(0xFFE57373)) }
                                     }
-                                    IconButton(onClick = { onDelete(disc.id) }) { Icon(Icons.Default.Delete, "Delete", tint = Color(0xFFC62828)) }
                                 }
                             }
                         }

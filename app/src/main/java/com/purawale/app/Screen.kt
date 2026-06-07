@@ -13,7 +13,12 @@ sealed class Screen {
     object FamilyTree : Screen()
     object Calendar : Screen()
     object Notifications : Screen()
+    object Emergency : Screen()
     object FamilyGames : Screen()
+    object LoginLog : Screen()
+    object ActivityLog : Screen()
+    object BusinessDirectory : Screen()
+    object Achievements : Screen()
     object Trivia : Screen()
     object ManageTrivia : Screen()
     data class GameLobby(val gameType: String) : Screen()
@@ -26,6 +31,7 @@ sealed class Screen {
     data class Antakshari(val sessionId: String) : Screen()
     data class Chat(val otherMember: Member) : Screen()
     data class EditProfile(val member: Member?, val isReadOnly: Boolean = false) : Screen()
+    data class AICardGenerator(val member: Member, val eventType: String) : Screen()
 
     companion object {
         fun fromGameType(gameType: String, sessionId: String): Screen {

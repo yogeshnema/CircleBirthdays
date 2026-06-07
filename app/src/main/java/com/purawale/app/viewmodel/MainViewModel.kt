@@ -1,6 +1,7 @@
 package com.purawale.app.viewmodel
 
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.*
 import androidx.core.content.edit
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
 
 class MainViewModel : ViewModel() {
     var members by mutableStateOf<List<Member>>(emptyList())
+    var allMembers by mutableStateOf<List<Member>>(emptyList())
     var pendingMembers by mutableStateOf<List<Member>>(emptyList())
     var memories by mutableStateOf<List<Memory>>(emptyList())
     var discussions by mutableStateOf<List<Discussion>>(emptyList())
@@ -26,6 +28,12 @@ class MainViewModel : ViewModel() {
     var activeGames by mutableStateOf<List<GameSession>>(emptyList())
     var currentGameSession by mutableStateOf<GameSession?>(null)
     var triviaQuestions by mutableStateOf<List<TriviaQuestion>>(emptyList())
+    var businesses by mutableStateOf<List<Business>>(emptyList())
+    var achievements by mutableStateOf<List<Achievement>>(emptyList())
+    var activityLogs by mutableStateOf<List<ActivityLog>>(emptyList())
+    
+    // AI Card Generator Cache
+    var aiDesignCache by mutableStateOf<Map<String, Any>>(emptyMap())
     
     var currentUser by mutableStateOf<Member?>(null)
     var loginError by mutableStateOf<String?>(null)
@@ -38,9 +46,20 @@ class MainViewModel : ViewModel() {
     private val listeners = mutableListOf<ListenerRegistration>()
     private val userListeners = mutableListOf<ListenerRegistration>()
     private var messageListener: ListenerRegistration? = null
+    private var memoriesListener: ListenerRegistration? = null
+    private var discussionsListener: ListenerRegistration? = null
+
+    private fun normalizedTreeId(treeId: String?): String {
+        return treeId?.takeIf { it.isNotBlank() } ?: "primary"
+    }
+
+    private fun findLoginMember(phone: String): Member? {
+        return allMembers.find { it.phoneNumber == phone } ?: members.find { it.phoneNumber == phone }
+    }
 
     fun init(prefs: android.content.SharedPreferences) {
         isHindi = prefs.getBoolean("is_hindi", false)
+        currentTreeId = "primary"
         startSync(prefs)
     }
 
@@ -53,11 +72,56 @@ class MainViewModel : ViewModel() {
         prefs.edit { putBoolean("is_hindi", isHindi) }
     }
 
+    var currentTreeId by mutableStateOf("primary")
+        private set
+
     private fun startSync(prefs: android.content.SharedPreferences) {
         listeners.forEach { it.remove() }
         listeners.clear()
+        
+        memoriesListener?.remove()
+        discussionsListener?.remove()
+
+        listeners += FirebaseManager.getActivityLogs { activityLogs = it }
+
+        listeners += FirebaseManager.getAllMembers(
+            onResult = { fetched ->
+                val populated = FamilyUtils.populateAllLinks(fetched, currentUser)
+                allMembers = populated
+
+                currentUser?.let { current ->
+                    populated.find { it.id == current.id }?.let { updateCurrentUser(it) }
+                }
+
+                if (currentUser == null) {
+                    val lastLogin = prefs.getLong("last_login_time", 0L)
+                    val savedUserId = prefs.getString("user_id", null)
+                    val currentTime = System.currentTimeMillis()
+
+                    if (savedUserId != null) {
+                        val userInList = populated.find { it.id == savedUserId }
+                        if (userInList != null && (currentTime - lastLogin) < 10L * 24 * 60 * 60 * 1000) {
+                            updateCurrentUser(userInList)
+                            currentScreen = Screen.Dashboard
+                            viewModelScope.launch {
+                                FirebaseManager.updateLastLoggedIn(userInList.id)
+                            }
+                        } else if (userInList == null || (currentTime - lastLogin) >= 10L * 24 * 60 * 60 * 1000) {
+                            logout(prefs)
+                        }
+                    }
+                }
+            },
+            onError = { error ->
+                Log.e("MainViewModel", "Firestore all-members error: ${error.message}")
+                if (error.message?.contains("Unable to resolve host") == true) {
+                    loginError = "No Internet connection. Please check your network."
+                }
+            }
+        )
 
         listeners += FirebaseManager.getMembers(
+            treeId = currentTreeId,
             onResult = { fetched ->
                 Log.d("MainViewModel", "Fetched ${fetched.size} members")
                 val populated = FamilyUtils.populateAllLinks(fetched, currentUser)
@@ -68,32 +132,12 @@ class MainViewModel : ViewModel() {
                     val updated = populated.find { it.id == current.id }
                     if (updated != null) {
                         updateCurrentUser(updated)
-                    } else {
-                        // User no longer exists in the list (e.g. deleted)
+                    } else if (currentTreeId == "primary") {
+                        // User no longer exists in primary list (e.g. deleted)
                         logout(prefs)
                     }
                 }
 
-                // Handle auto-login
-                if (currentUser == null) {
-                    val lastLogin = prefs.getLong("last_login_time", 0L)
-                    val savedUserId = prefs.getString("user_id", null)
-                    val currentTime = System.currentTimeMillis()
-                    
-                    if (savedUserId != null) {
-                        val userInList = populated.find { it.id == savedUserId }
-                        if (userInList != null && (currentTime - lastLogin) < 10L * 24 * 60 * 60 * 1000) {
-                            updateCurrentUser(userInList)
-                            currentScreen = Screen.Dashboard
-                            viewModelScope.launch {
-                                FirebaseManager.updateLastLoggedIn(userInList.id)
-                            }
-                        } else if (userInList == null || (currentTime - lastLogin) >= 10L * 24 * 60 * 60 * 1000) {
-                            // Expired or user deleted
-                            logout(prefs)
-                        }
-                    }
-                }
             },
             onError = { error ->
                 Log.e("MainViewModel", "Firestore error: ${error.message}")
@@ -109,11 +153,27 @@ class MainViewModel : ViewModel() {
             }
         )
 
-        listeners += FirebaseManager.getRecipes { recipes = it }
-        listeners += FirebaseManager.getTraditions { traditions = it }
-        listeners += FirebaseManager.getMilestones { milestones = it }
+        memoriesListener = FirebaseManager.getMemories(currentTreeId, true) { memories = it }
+        discussionsListener = FirebaseManager.getDiscussions(currentTreeId, true) { discussions = it }
+
+        listeners += FirebaseManager.getRecipes(currentTreeId) { recipes = it }
+        listeners += FirebaseManager.getTraditions(currentTreeId) { traditions = it }
+        listeners += FirebaseManager.getMilestones(currentTreeId) { milestones = it }
         listeners += FirebaseManager.getDeletionRequests { deletionRequests = it }
         listeners += FirebaseManager.getActiveGameSessions { activeGames = it }
+        listeners += FirebaseManager.getBusinesses(currentTreeId) { businesses = it }
+        listeners += FirebaseManager.getAchievements(currentTreeId) { achievements = it }
+        listeners += FirebaseManager.getRelationshipOverrides { relationshipOverrides = it }
+    }
+
+    fun switchTree(treeId: String, prefs: android.content.SharedPreferences) {
+        if (currentTreeId != treeId) {
+            currentTreeId = treeId
+            prefs.edit { putString("current_tree_id", currentTreeId) }
+            // If switching to a non-primary tree, we might need a visual indicator
+            // or reset certain states if needed.
+            startSync(prefs)
+        }
     }
 
     private fun updateCurrentUser(user: Member) {
@@ -130,10 +190,16 @@ class MainViewModel : ViewModel() {
         userListeners.clear()
 
         if (user != null) {
-            val isAdmin = user.isAdmin
+            // A user is a moderator if they are a global Admin OR the owner of this secondary tree
+            val isBranchModerator = user.isAdmin || (currentTreeId == user.id)
             
-            userListeners += FirebaseManager.getMemories(onlyApproved = !isAdmin) { memories = it }
-            userListeners += FirebaseManager.getDiscussions(onlyApproved = !isAdmin) { discussions = it }
+            userListeners += FirebaseManager.getMemories(treeId = currentTreeId, onlyApproved = !isBranchModerator) { memories = it }
+            userListeners += FirebaseManager.getDiscussions(treeId = currentTreeId, onlyApproved = !isBranchModerator) { discussions = it }
+            userListeners += FirebaseManager.getRecipes(treeId = currentTreeId) { recipes = it }
+            userListeners += FirebaseManager.getTraditions(treeId = currentTreeId) { traditions = it }
+            userListeners += FirebaseManager.getMilestones(treeId = currentTreeId) { milestones = it }
+            userListeners += FirebaseManager.getBusinesses(treeId = currentTreeId) { businesses = it }
+            userListeners += FirebaseManager.getAchievements(treeId = currentTreeId) { achievements = it }
             userListeners += FirebaseManager.getChannels(user.id) { channels = it }
 
             if (user.isAdmin || user.phoneNumber == AppConfig.ADMIN_PHONE) {
@@ -145,23 +211,32 @@ class MainViewModel : ViewModel() {
                 FirebaseMessaging.getInstance().unsubscribeFromTopic("admin_only")
             }
             
-            FirebaseMessaging.getInstance().subscribeToTopic("events")
-            FirebaseMessaging.getInstance().subscribeToTopic("recipes")
-            FirebaseMessaging.getInstance().subscribeToTopic("traditions")
-            FirebaseMessaging.getInstance().subscribeToTopic("gallery")
+            // Tree-aware topic subscriptions
+            val suffix = if (currentTreeId == "primary") "" else "_$currentTreeId"
+            
+            FirebaseMessaging.getInstance().subscribeToTopic("events$suffix")
+            FirebaseMessaging.getInstance().subscribeToTopic("recipes$suffix")
+            FirebaseMessaging.getInstance().subscribeToTopic("traditions$suffix")
+            FirebaseMessaging.getInstance().subscribeToTopic("gallery$suffix")
+            FirebaseMessaging.getInstance().subscribeToTopic("memorylane$suffix")
+            FirebaseMessaging.getInstance().subscribeToTopic("all_discussions$suffix")
+            FirebaseMessaging.getInstance().subscribeToTopic("business$suffix")
+            FirebaseMessaging.getInstance().subscribeToTopic("achievements$suffix")
         }
     }
 
     fun login(phone: String, prefs: android.content.SharedPreferences) {
-        val loginUser = members.find { it.phoneNumber == phone }
+        val loginUser = findLoginMember(phone)
         if (loginUser != null) {
             updateCurrentUser(loginUser)
             loginError = null
             currentScreen = Screen.Dashboard
             prefs.edit {
                 putString("user_id", loginUser.id)
+                putString("current_tree_id", currentTreeId)
                 putLong("last_login_time", System.currentTimeMillis())
             }
+            startSync(prefs)
             viewModelScope.launch { FirebaseManager.updateLastLoggedIn(loginUser.id) }
         } else {
             loginError = "Access Denied: Phone number not found."
@@ -171,6 +246,7 @@ class MainViewModel : ViewModel() {
     fun logout(prefs: android.content.SharedPreferences) {
         currentUser = null
         currentScreen = Screen.Login
+        currentTreeId = "primary"
         prefs.edit { clear() }
         userListeners.forEach { it.remove() }
         userListeners.clear()
@@ -224,6 +300,8 @@ class MainViewModel : ViewModel() {
             currentScreen = Screen.Traditions
         } else if (navigateTo == "GALLERY") {
             currentScreen = Screen.Gallery
+        } else if (navigateTo == "BUSINESS") {
+            currentScreen = Screen.BusinessDirectory
         } else if (navigateTo == "NOTIFICATION_CENTER") {
             currentScreen = Screen.Notifications
         } else if (navigateTo == "OVERRIDE_APPROVED" || navigateTo == "DELETION_REQUEST" || navigateTo == "PENDING_APPROVAL") {
@@ -254,10 +332,28 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch {
             isLoading = true
             try {
-                val finalMember = if (photoUri != null) {
+                val withPhoto = if (photoUri != null) {
                     val url = FirebaseManager.uploadPhoto(photoUri)
                     member.copy(photoUrl = url)
                 } else member
+
+                val branchOwnerId = currentTreeId.takeIf { it != "primary" }
+                val isBranchRoot = branchOwnerId != null && withPhoto.id == branchOwnerId
+                val finalMember = when {
+                    currentUser?.isAdmin == true -> withPhoto
+                    branchOwnerId != null && !isBranchRoot -> withPhoto.copy(
+                        treeId = currentTreeId,
+                        isPrimaryTree = false
+                    )
+                    branchOwnerId != null && isBranchRoot -> withPhoto.copy(
+                        treeId = "primary",
+                        isPrimaryTree = true
+                    )
+                    else -> withPhoto.copy(
+                        treeId = "primary",
+                        isPrimaryTree = true
+                    )
+                }
                 
                 FirebaseManager.submitChange(finalMember, currentUser?.isAdmin == true)
             } catch (e: Exception) {
@@ -287,6 +383,16 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun rejectPendingMember(memberId: String) {
+        viewModelScope.launch {
+            try {
+                FirebaseManager.deletePendingChange(memberId)
+            } catch (e: Exception) {
+                error = e.message
+            }
+        }
+    }
+
     fun uploadMemory(caption: String, uri: android.net.Uri, taggedIds: List<String>) {
         viewModelScope.launch {
             isLoading = true
@@ -303,7 +409,7 @@ class MainViewModel : ViewModel() {
                     status = if (user?.isAdmin == true) "APPROVED" else "PENDING",
                     taggedMemberIds = taggedIds
                 )
-                FirebaseManager.submitMemory(memory)
+                FirebaseManager.submitMemory(memory, currentTreeId)
             } catch (e: Exception) {
                 error = e.message
             } finally {
@@ -325,7 +431,9 @@ class MainViewModel : ViewModel() {
     fun deleteMemory(id: String) {
         viewModelScope.launch {
             try {
-                FirebaseManager.deleteMemory(id)
+                currentUser?.let { user ->
+                    FirebaseManager.deleteMemory(id, user.id, user.name)
+                } ?: FirebaseManager.deleteMemory(id, "System", "System")
             } catch (e: Exception) {
                 error = e.message
             }
@@ -363,7 +471,7 @@ class MainViewModel : ViewModel() {
                     val url = FirebaseManager.uploadPhoto(uri)
                     recipe.copy(imageUrl = url)
                 } else recipe
-                FirebaseManager.submitRecipe(finalRecipe)
+                FirebaseManager.submitRecipe(finalRecipe, currentTreeId)
             } catch (e: Exception) {
                 error = e.message
             } finally {
@@ -378,7 +486,13 @@ class MainViewModel : ViewModel() {
 
     fun deleteRecipe(id: String) {
         viewModelScope.launch {
-            FirebaseManager.deleteRecipe(id)
+            try {
+                currentUser?.let { user ->
+                    FirebaseManager.deleteRecipe(id, user.id, user.name)
+                } ?: FirebaseManager.deleteRecipe(id, "System", "System")
+            } catch (e: Exception) {
+                error = e.message
+            }
         }
     }
 
@@ -413,7 +527,7 @@ class MainViewModel : ViewModel() {
                     val url = FirebaseManager.uploadPhoto(uri)
                     tradition.copy(imageUrl = url)
                 } else tradition
-                FirebaseManager.submitTradition(finalTradition)
+                FirebaseManager.submitTradition(finalTradition, currentTreeId)
             } catch (e: Exception) {
                 error = e.message
             } finally {
@@ -428,7 +542,13 @@ class MainViewModel : ViewModel() {
 
     fun deleteTradition(id: String) {
         viewModelScope.launch {
-            FirebaseManager.deleteTradition(id)
+            try {
+                currentUser?.let { user ->
+                    FirebaseManager.deleteTradition(id, user.id, user.name)
+                } ?: FirebaseManager.deleteTradition(id, "System", "System")
+            } catch (e: Exception) {
+                error = e.message
+            }
         }
     }
 
@@ -466,7 +586,7 @@ class MainViewModel : ViewModel() {
                 if (audioUri != null) {
                     finalMilestone = finalMilestone.copy(audioUrl = FirebaseManager.uploadAudio(audioUri))
                 }
-                FirebaseManager.submitMilestone(finalMilestone)
+                FirebaseManager.submitMilestone(finalMilestone, currentTreeId)
             } catch (e: Exception) {
                 error = e.message
             } finally {
@@ -477,7 +597,13 @@ class MainViewModel : ViewModel() {
 
     fun deleteMilestone(id: String) {
         viewModelScope.launch {
-            FirebaseManager.deleteMilestone(id)
+            try {
+                currentUser?.let { user ->
+                    FirebaseManager.deleteMilestone(id, user.id, user.name)
+                } ?: FirebaseManager.deleteMilestone(id, "System", "System")
+            } catch (e: Exception) {
+                error = e.message
+            }
         }
     }
 
@@ -504,6 +630,60 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun addBusiness(business: Business) {
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                FirebaseManager.submitBusiness(business, currentTreeId)
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    fun deleteBusiness(id: String) {
+        viewModelScope.launch {
+            try {
+                currentUser?.let { user ->
+                    FirebaseManager.deleteBusiness(id, user.id, user.name)
+                } ?: FirebaseManager.deleteBusiness(id, "System", "System")
+            } catch (e: Exception) {
+                error = e.message
+            }
+        }
+    }
+
+    fun addAchievement(achievement: Achievement, imageUri: Uri?) {
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                val finalAchievement = if (imageUri != null) {
+                    val url = FirebaseManager.uploadPhoto(imageUri)
+                    achievement.copy(imageUrl = url)
+                } else achievement
+                FirebaseManager.submitAchievement(finalAchievement, currentTreeId)
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    fun deleteAchievement(id: String) {
+        viewModelScope.launch {
+            try {
+                currentUser?.let { user ->
+                    FirebaseManager.deleteAchievement(id, user.id, user.name)
+                } ?: FirebaseManager.deleteAchievement(id, "System", "System")
+            } catch (e: Exception) {
+                error = e.message
+            }
+        }
+    }
+
     fun postDiscussion(discussion: Discussion, uri: android.net.Uri?) {
         viewModelScope.launch {
             isLoading = true
@@ -512,7 +692,7 @@ class MainViewModel : ViewModel() {
                     val url = FirebaseManager.uploadPhoto(uri)
                     discussion.copy(content = url)
                 } else discussion
-                FirebaseManager.submitDiscussion(finalDiscussion)
+                FirebaseManager.submitDiscussion(finalDiscussion, currentTreeId)
             } catch (e: Exception) {
                 error = e.message
             } finally {
@@ -529,7 +709,13 @@ class MainViewModel : ViewModel() {
 
     fun deleteDiscussion(id: String) {
         viewModelScope.launch {
-            FirebaseManager.deleteDiscussion(id)
+            try {
+                currentUser?.let { user ->
+                    FirebaseManager.deleteDiscussion(id, user.id, user.name)
+                } ?: FirebaseManager.deleteDiscussion(id, "System", "System")
+            } catch (e: Exception) {
+                error = e.message
+            }
         }
     }
 
@@ -680,7 +866,21 @@ class MainViewModel : ViewModel() {
 
     fun approveRelationshipOverride(override: RelationshipOverride) {
         viewModelScope.launch {
-            FirebaseManager.approveRelationshipOverride(override)
+            try {
+                FirebaseManager.approveRelationshipOverride(override)
+            } catch (e: Exception) {
+                error = "Approval failed: ${e.message}"
+            }
+        }
+    }
+
+    fun rejectRelationshipOverride(overrideId: String) {
+        viewModelScope.launch {
+            try {
+                FirebaseManager.rejectRelationshipOverride(overrideId)
+            } catch (e: Exception) {
+                error = "Rejection failed: ${e.message}"
+            }
         }
     }
 

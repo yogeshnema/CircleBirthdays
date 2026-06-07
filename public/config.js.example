@@ -1,0 +1,15 @@
+export const APP_CONFIG = {
+    FIREBASE: {
+        apiKey: "REPLACE_WITH_FIREBASE_WEB_API_KEY",
+        authDomain: "REPLACE_WITH_FIREBASE_AUTH_DOMAIN",
+        projectId: "REPLACE_WITH_FIREBASE_PROJECT_ID",
+        storageBucket: "REPLACE_WITH_FIREBASE_STORAGE_BUCKET",
+        messagingSenderId: "REPLACE_WITH_FIREBASE_MESSAGING_SENDER_ID",
+        appId: "REPLACE_WITH_FIREBASE_WEB_APP_ID"
+    },
+    ADMIN_PHONE: "REPLACE_WITH_ADMIN_PHONE",
+    ADMIN_NAME: "Admin",
+    SUPPORT_EMAIL: "support@example.com",
+    DEFAULT_RECIPE_IMAGE: "https://images.unsplash.com/photo-1495195129352-aec325a55b65?auto=format&fit=crop&q=80&w=400",
+    DEFAULT_TRADITION_IMAGE: "https://images.unsplash.com/photo-1514416432279-50fad2824af7?auto=format&fit=crop&q=80&w=400"
+};

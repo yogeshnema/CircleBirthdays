@@ -1,6 +1,6 @@
 /**
  * Calendar Manager for CircleBirthdays 2026
- * Handles rendering of the interactive calendar and integration with PanchangData.
+ * Handles rendering of the interactive calendar and integration with Event Data.
  */
 
 let currentDisplayDate = new Date(2026, 0, 1); // Start at Jan 2026
@@ -23,31 +23,6 @@ function changeMonth(delta) {
     renderCalendar();
 }
 
-function switchCalendarView(view) {
-    const gridView = document.getElementById('calendar-grid-view');
-    const paperView = document.getElementById('calendar-paper-view');
-    const gridBtn = document.getElementById('view-btn-grid');
-    const paperBtn = document.getElementById('view-btn-paper');
-
-    if (view === 'grid') {
-        gridView.classList.remove('hidden');
-        paperView.classList.add('hidden');
-        gridBtn.classList.add('bg-white', 'shadow-sm', 'text-indigo-600');
-        gridBtn.classList.remove('text-slate-500');
-        paperBtn.classList.remove('bg-white', 'shadow-sm', 'text-indigo-600');
-        paperBtn.classList.add('text-slate-500');
-    } else {
-        gridView.classList.add('hidden');
-        paperView.classList.remove('hidden');
-        paperBtn.classList.add('bg-white', 'shadow-sm', 'text-indigo-600');
-        paperBtn.classList.remove('text-slate-500');
-        gridBtn.classList.remove('bg-white', 'shadow-sm', 'text-indigo-600');
-        gridBtn.classList.add('text-slate-500');
-    }
-}
-
-window.switchCalendarView = switchCalendarView;
-
 function renderCalendar() {
     const monthDisplay = document.getElementById('current-month-display');
     const daysContainer = document.getElementById('calendar-days');
@@ -62,16 +37,6 @@ function renderCalendar() {
     ];
 
     monthDisplay.innerText = `${monthNames[month]} ${year}`;
-
-    // Update Reference Image
-    const imgElement = document.getElementById('monthly-panchang-img');
-    const smallImgElement = document.getElementById('monthly-panchang-img-small');
-    if (imgElement) {
-        imgElement.src = `calendar/${month + 1}.jpg`;
-    }
-    if (smallImgElement) {
-        smallImgElement.src = `calendar/${month + 1}.jpg`;
-    }
 
     // Clear previous days
     daysContainer.innerHTML = '';
@@ -103,8 +68,6 @@ function createDayElement(day, dateStr) {
     const date = d.getDate();
 
     const festival = PanchangData.festivals2026[m]?.[date];
-    const panchakEntry = PanchangData.panchak2026[m];
-    const isPanchak = panchakEntry ? panchakEntry.some(range => date >= range[0] && date <= range[1]) : false;
 
     let content = `<span class="text-sm font-bold ${festival ? 'text-indigo-600' : 'text-slate-400'}">${day}</span>`;
 
@@ -114,14 +77,6 @@ function createDayElement(day, dateStr) {
                 <span class="block text-[10px] md:text-xs font-bold text-indigo-700 leading-tight bg-indigo-50 p-1 rounded-lg border border-indigo-100 line-clamp-2">
                     ${festival}
                 </span>
-            </div>
-        `;
-    }
-
-    if (isPanchak) {
-        content += `
-            <div class="absolute bottom-2 left-2 right-2">
-                <span class="block text-[8px] font-black text-amber-600 uppercase tracking-tighter">Panchak</span>
             </div>
         `;
     }
@@ -150,35 +105,24 @@ function updateTodayWidget() {
     if (!detailsContainer) return;
 
     const festival = PanchangData.festivals2026[m]?.[date];
-    const muhurats = PanchangData.muhurats2026[m];
-
-    let muhuratText = 'Check Details';
-    if (muhurats) {
-        for (const [type, days] of Object.entries(muhurats)) {
-            if (days.includes(date)) {
-                muhuratText = type;
-                break;
-            }
-        }
-    }
 
     detailsContainer.innerHTML = `
         <div class="flex items-center gap-4 bg-white/10 p-4 rounded-2xl backdrop-blur-sm cursor-pointer hover:bg-white/20 transition" onclick="showDayDetails('${displayDate.toISOString().split('T')[0]}')">
             <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-xl text-white">
-                <i class="fas fa-om"></i>
+                <i class="fas fa-calendar-day"></i>
             </div>
             <div>
                 <p class="text-xs text-white/60 font-bold uppercase tracking-widest">Festival</p>
                 <p class="font-bold text-white">${festival ? festival : 'No Major Festival'}</p>
             </div>
         </div>
-        <div class="flex items-center gap-4 bg-white/10 p-4 rounded-2xl backdrop-blur-sm cursor-pointer hover:bg-white/20 transition" onclick="showDayDetails('${displayDate.toISOString().split('T')[0]}')">
+        <div class="flex items-center gap-4 bg-white/10 p-4 rounded-2xl backdrop-blur-sm cursor-pointer hover:bg-white/20 transition">
             <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-xl text-white">
-                <i class="fas fa-clock"></i>
+                <i class="fas fa-birthday-cake"></i>
             </div>
             <div>
-                <p class="text-xs text-white/60 font-bold uppercase tracking-widest">Muhurat</p>
-                <p class="font-bold text-white">${muhuratText}</p>
+                <p class="text-xs text-white/60 font-bold uppercase tracking-widest">Family Birthdays</p>
+                <p class="font-bold text-white">Check Directory</p>
             </div>
         </div>
     `;
@@ -219,7 +163,7 @@ function updateUpcomingFestivals(startDate) {
                 </div>
                 <div>
                     <p class="font-bold text-[#2D241E] group-hover:text-indigo-600 transition">${f.name}</p>
-                    <p class="text-xs text-slate-400 font-medium">Auspicious Day</p>
+                    <p class="text-xs text-slate-400 font-medium">Family Festival</p>
                 </div>
             </div>
         `;
@@ -240,69 +184,15 @@ function showDayDetails(dateStr) {
     const festival = PanchangData.festivals2026[m]?.[date];
     document.getElementById('calendar-modal-title').innerText = festival || "Normal Day";
 
-    // Panchak
-    const panchakEntry = PanchangData.panchak2026[m];
-    const isPanchak = panchakEntry ? panchakEntry.some(range => date >= range[0] && date <= range[1]) : false;
-    const panchakWarning = document.getElementById('calendar-panchak-warning');
-    if (isPanchak) {
-        panchakWarning.classList.remove('hidden');
-    } else {
-        panchakWarning.classList.add('hidden');
-    }
-
-    // Muhurats
-    const muhuratSection = document.getElementById('calendar-muhurat-section');
-    const muhuratList = document.getElementById('calendar-muhurat-list');
-    const monthMuhurats = PanchangData.muhurats2026[m];
-    let availableMuhurats = [];
-
-    if (monthMuhurats) {
-        for (const [type, days] of Object.entries(monthMuhurats)) {
-            if (days.includes(date)) {
-                availableMuhurats.push(type);
-            }
-        }
-    }
-
-    if (availableMuhurats.length > 0) {
-        muhuratSection.classList.remove('hidden');
-        muhuratList.innerHTML = availableMuhurats.map(m => `
-            <div class="bg-indigo-50 p-4 rounded-2xl flex items-center justify-between border border-indigo-100">
-                <span class="font-bold text-indigo-900">${m}</span>
-                <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Auspicious Time</span>
+    const eventDetails = document.getElementById('calendar-event-details');
+    if (eventDetails) {
+        eventDetails.innerHTML = `
+            <div class="p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Daily Summary</h4>
+                <p class="text-slate-600 font-medium">${festival ? `Today we celebrate <strong>${festival}</strong>.` : "No major festivals or family events recorded for this date yet."}</p>
             </div>
-        `).join('');
-    } else {
-        muhuratSection.classList.add('hidden');
+        `;
     }
-
-    // Mock Panchang Details (Tithi, Nakshatra etc based on date)
-    const panchangSection = document.getElementById('calendar-panchang-section');
-    const panchangDetails = document.getElementById('calendar-panchang-details');
-    panchangSection.classList.remove('hidden');
-
-    // Simple pseudo-random logic for mock data consistent with the date
-    const tithis = ["Pratipada", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashthi", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima", "Amavasya"];
-    const tithi = tithis[date % tithis.length];
-
-    panchangDetails.innerHTML = `
-        <div class="bg-slate-50 p-3 rounded-xl">
-            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Tithi</p>
-            <p class="text-sm font-bold text-slate-700">${tithi}</p>
-        </div>
-        <div class="bg-slate-50 p-3 rounded-xl">
-            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Nakshatra</p>
-            <p class="text-sm font-bold text-slate-700">Ashwini</p>
-        </div>
-        <div class="bg-slate-50 p-3 rounded-xl">
-            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Yoga</p>
-            <p class="text-sm font-bold text-slate-700">Siddha</p>
-        </div>
-        <div class="bg-slate-50 p-3 rounded-xl">
-            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Karana</p>
-            <p class="text-sm font-bold text-slate-700">Bava</p>
-        </div>
-    `;
 
     modal.classList.remove('hidden');
 }
@@ -311,29 +201,7 @@ function closeCalendarModal() {
     document.getElementById('calendar-detail-modal').classList.add('hidden');
 }
 
-function openPanchangImageModal() {
-    const modal = document.getElementById('panchang-image-modal');
-    const modalImg = document.getElementById('modal-panchang-img');
-    const sourceImg = document.getElementById('monthly-panchang-img');
-
-    if (modal && modalImg && sourceImg) {
-        modalImg.src = sourceImg.src;
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; // Prevent scrolling
-    }
-}
-
-function closePanchangImageModal() {
-    const modal = document.getElementById('panchang-image-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.style.overflow = ''; // Restore scrolling
-    }
-}
-
 window.closeCalendarModal = closeCalendarModal;
-window.openPanchangImageModal = openPanchangImageModal;
-window.closePanchangImageModal = closePanchangImageModal;
 
 // Initialize when the tab is switched to calendar
 const originalSwitchTab = window.switchTab;

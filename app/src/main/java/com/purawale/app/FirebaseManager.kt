@@ -25,6 +25,14 @@ object FirebaseManager {
     }
     private val storage = FirebaseStorage.getInstance()
 
+    private fun normalizedTreeId(treeId: String?): String {
+        return treeId?.takeIf { it.isNotBlank() } ?: "primary"
+    }
+
+    private fun belongsToTree(itemTreeId: String?, selectedTreeId: String): Boolean {
+        return normalizedTreeId(itemTreeId) == normalizedTreeId(selectedTreeId)
+    }
+
     suspend fun uploadPhoto(uri: Uri): String {
         val fileName = "photos/${UUID.randomUUID()}.jpg"
         val ref = storage.reference.child(fileName)
@@ -63,6 +71,18 @@ object FirebaseManager {
                 .document(finalMember.id)
                 .set(finalMember)
                 .await()
+            
+            logActivity(
+                ActivityLog(
+                    id = UUID.randomUUID().toString(),
+                    userId = member.requestedBy ?: member.id,
+                    userName = member.requestedByName ?: member.name,
+                    action = if (isApproved) "CHANGE_APPLIED" else "CHANGE_PROPOSED",
+                    targetType = "MEMBER",
+                    targetId = member.id,
+                    targetName = member.name
+                )
+            )
             Log.d("FirebaseManager", "Successfully submitted: ${finalMember.name}")
         } catch (e: Exception) {
             Log.e("FirebaseManager", "Failed to submit change for ${member.name}", e)
@@ -120,11 +140,30 @@ object FirebaseManager {
                 transaction.set(memberRef, baseMember.copy(manualRelationships = finalManual))
                 transaction.delete(db.collection(AppConfig.Collections.PENDING_UPDATES).document(pendingMember.id))
             }.await()
+            logActivity(
+                ActivityLog(
+                    id = UUID.randomUUID().toString(),
+                    userId = pendingMember.requestedBy ?: pendingMember.id,
+                    userName = pendingMember.requestedByName ?: pendingMember.name,
+                    action = "CHANGE_APPROVED",
+                    targetType = "MEMBER",
+                    targetId = pendingMember.id,
+                    targetName = pendingMember.name
+                )
+            )
             Log.d("FirebaseManager", "Approved change for ${pendingMember.name}")
         } catch (e: Exception) {
             Log.e("FirebaseManager", "Failed to approve change", e)
             throw e
         }
+    }
+
+    suspend fun deletePendingChange(memberId: String) {
+        if (memberId.isBlank()) return
+        db.collection(AppConfig.Collections.PENDING_UPDATES)
+            .document(memberId)
+            .delete()
+            .await()
     }
 
     suspend fun clearAll() {
@@ -197,17 +236,28 @@ object FirebaseManager {
             FirebaseMessaging.getInstance().token.await()?.let { token ->
                 db.collection(AppConfig.Collections.MEMBERS).document(memberId).update("fcmToken", token).await()
             }
-            
-            // Trigger a notification for other admins about this login
+
+            // Log activity
             val memberSnapshot = db.collection(AppConfig.Collections.MEMBERS).document(memberId).get().await()
             val memberName = memberSnapshot.getString("name") ?: "A user"
+            logActivity(
+                ActivityLog(
+                    id = UUID.randomUUID().toString(),
+                    userId = memberId,
+                    userName = memberName,
+                    action = "LOGIN",
+                    timestamp = now
+                )
+            )
+            
+            // Trigger a notification for other admins about this login
             
             triggerNotification(
                 topic = "admin_only",
                 title = "New Login",
                 body = "$memberName just logged in.",
                 type = "NEW_LOGIN",
-                isAdminOnly = true
+                adminOnly = true
             )
 
             Log.d("FirebaseManager", "Last logged in and token updated for $memberId")
@@ -305,7 +355,7 @@ object FirebaseManager {
                 val notifications = snapshot?.toObjects(AppNotification::class.java) ?: emptyList()
                 val filtered = notifications.filter { notification ->
                     val isForMe = when {
-                        notification.isAdminOnly -> isAdmin
+                        notification.adminOnly -> isAdmin
                         notification.targetUserId != null -> notification.targetUserId == userId
                         notification.topic == "all" -> true
                         notification.topic == "gallery" -> true
@@ -347,7 +397,7 @@ object FirebaseManager {
         senderName: String? = null,
         targetUserId: String? = null,
         relatedId: String? = null,
-        isAdminOnly: Boolean = false,
+        adminOnly: Boolean = false,
         metadata: Map<String, String> = emptyMap()
     ) {
         val notificationId = UUID.randomUUID().toString()
@@ -362,7 +412,7 @@ object FirebaseManager {
             senderId = senderId,
             senderName = senderName,
             relatedId = relatedId,
-            isAdminOnly = isAdminOnly,
+            adminOnly = adminOnly,
             topic = topic,
             metadata = metadata
         )
@@ -405,16 +455,40 @@ object FirebaseManager {
             }
     }
 
-    fun getMembers(onResult: (List<Member>) -> Unit, onError: (Exception) -> Unit = {}): ListenerRegistration {
+    suspend fun getMemberByPhone(phone: String): Member? {
+        val snapshot = db.collection(AppConfig.Collections.MEMBERS)
+            .whereEqualTo("phoneNumber", phone)
+            .limit(1)
+            .get()
+            .await()
+        return snapshot.toObjects(Member::class.java).firstOrNull()
+    }
+
+    fun getMembers(treeId: String = "primary", onResult: (List<Member>) -> Unit, onError: (Exception) -> Unit = {}): ListenerRegistration {
         return db.collection(AppConfig.Collections.MEMBERS)
-            .orderBy("familyId")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("FirebaseManager", "Error fetching members", error)
                     onError(error)
                     return@addSnapshotListener
                 }
-                val members = snapshot?.toObjects(Member::class.java) ?: emptyList()
+                val members = snapshot?.toObjects(Member::class.java).orEmpty()
+                    .filter { belongsToTree(it.treeId, treeId) }
+                    .sortedWith(compareBy<Member> { it.familyId }.thenBy { it.name })
+                onResult(members)
+            }
+    }
+
+    fun getAllMembers(onResult: (List<Member>) -> Unit, onError: (Exception) -> Unit = {}): ListenerRegistration {
+        return db.collection(AppConfig.Collections.MEMBERS)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("FirebaseManager", "Error fetching all members", error)
+                    onError(error)
+                    return@addSnapshotListener
+                }
+                val members = snapshot?.toObjects(Member::class.java).orEmpty()
+                    .sortedWith(compareBy<Member> { it.familyId }.thenBy { it.name })
                 onResult(members)
             }
     }
@@ -496,47 +570,65 @@ object FirebaseManager {
                 transaction.update(memberRef, "manualRelationships", updatedManual)
                 transaction.delete(db.collection(AppConfig.Collections.RELATIONSHIP_OVERRIDES).document(override.id))
             }.await()
-            
-            // Note: Cloud Functions should ideally handle the actual FCM sending based on the 
-            // document deletion/update, but we would trigger it here if we had a dedicated 
-            // notification service endpoint.
         } catch (e: Exception) {
             Log.e("FirebaseManager", "Failed to approve relationship override", e)
             throw e
         }
     }
 
+    suspend fun rejectRelationshipOverride(overrideId: String) {
+        try {
+            db.collection(AppConfig.Collections.RELATIONSHIP_OVERRIDES).document(overrideId).delete().await()
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Failed to reject relationship override", e)
+            throw e
+        }
+    }
+
     // Gallery / Memories
-    suspend fun submitMemory(memory: Memory) {
-        db.collection(AppConfig.Collections.MEMORIES).document(memory.id).set(memory).await()
+    suspend fun submitMemory(memory: Memory, treeId: String) {
+        val finalMemory = memory.copy(treeId = treeId)
+        db.collection(AppConfig.Collections.MEMORIES).document(finalMemory.id).set(finalMemory).await()
         
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = memory.userId,
+                userName = memory.userName,
+                action = "CREATE",
+                targetType = "MEMORY",
+                targetId = finalMemory.id,
+                targetName = finalMemory.caption
+            )
+        )
+
         triggerNotification(
-            topic = "gallery",
+            topic = if (treeId == "primary") "gallery" else "gallery_$treeId",
             title = "New Gallery Post",
-            body = "${if (memory.userName == "Admin") "Admin" else memory.userName} shared a new memory!",
+            body = "${if (finalMemory.userName == "Admin") "Admin" else finalMemory.userName} shared a new memory!",
             type = "GALLERY"
         )
 
         // Notify tagged members
-        memory.taggedMemberIds.forEach { memberId ->
+        finalMemory.taggedMemberIds.forEach { memberId ->
             triggerNotification(
                 topic = "user_$memberId",
                 title = "You were tagged in a photo!",
-                body = "${memory.userName} tagged you in a new memory: ${memory.caption}",
+                body = "${finalMemory.userName} tagged you in a new memory: ${finalMemory.caption}",
                 type = "TAGGED_MEMORY"
             )
         }
 
-        if (memory.status == "APPROVED") {
-            awardPoints(memory.userId, 10)
+        if (finalMemory.status == "APPROVED") {
+            awardPoints(finalMemory.userId, 10)
         }
     }
 
-    fun getMemories(onlyApproved: Boolean, onResult: (List<Memory>) -> Unit): ListenerRegistration {
-        val query = if (onlyApproved) {
-            db.collection(AppConfig.Collections.MEMORIES).whereEqualTo("status", "APPROVED")
-        } else {
-            db.collection(AppConfig.Collections.MEMORIES)
+    fun getMemories(treeId: String = "primary", onlyApproved: Boolean, onResult: (List<Memory>) -> Unit): ListenerRegistration {
+        var query: Query = db.collection(AppConfig.Collections.MEMORIES)
+        
+        if (onlyApproved) {
+            query = query.whereEqualTo("status", "APPROVED")
         }
         
         return query.addSnapshotListener { snapshot, error ->
@@ -580,13 +672,14 @@ object FirebaseManager {
                         status = data["status"] as? String ?: "PENDING",
                         reactions = reactions,
                         comments = comments,
-                        taggedMemberIds = data["taggedMemberIds"] as? List<String> ?: emptyList()
+                        taggedMemberIds = data["taggedMemberIds"] as? List<String> ?: emptyList(),
+                        treeId = data["treeId"] as? String ?: "primary"
                     )
                 } catch (e: Exception) {
                     Log.e("FirebaseManager", "Error parsing memory ${doc.id}", e)
                     null
                 }
-            } ?: emptyList()
+            }?.filter { belongsToTree(it.treeId, treeId) } ?: emptyList()
             onResult(memories.sortedByDescending { it.timestamp })
         }
     }
@@ -602,37 +695,67 @@ object FirebaseManager {
         }
     }
 
-    suspend fun deleteMemory(memoryId: String) {
+    suspend fun deleteMemory(memoryId: String, userId: String, userName: String) {
         if (memoryId.isBlank()) return
-        db.collection(AppConfig.Collections.MEMORIES).document(memoryId).delete().await()
+        val docRef = db.collection(AppConfig.Collections.MEMORIES).document(memoryId)
+        val snapshot = docRef.get().await()
+        val title = snapshot.getString("caption") ?: "Photo"
+        
+        docRef.delete().await()
+
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                userName = userName,
+                action = "DELETE",
+                targetType = "MEMORY",
+                targetId = memoryId,
+                targetName = title
+            )
+        )
     }
 
     // Discussions
-    suspend fun submitDiscussion(discussion: Discussion) {
-        db.collection(AppConfig.Collections.DISCUSSIONS).document(discussion.id).set(discussion).await()
+    suspend fun submitDiscussion(discussion: Discussion, treeId: String) {
+        val finalDiscussion = discussion.copy(treeId = treeId)
+        db.collection(AppConfig.Collections.DISCUSSIONS).document(finalDiscussion.id).set(finalDiscussion).await()
         
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = finalDiscussion.userId,
+                userName = finalDiscussion.userName,
+                action = "CREATE",
+                targetType = "DISCUSSION",
+                targetId = finalDiscussion.id,
+                targetName = finalDiscussion.title
+            )
+        )
+
         // Trigger notification
         triggerNotification(
-            topic = "all_discussions",
+            topic = if (treeId == "primary") "all_discussions" else "discussions_$treeId",
             title = "New Discussion",
-            body = "${if (discussion.userName == "Admin") "Admin" else discussion.userName} started: ${discussion.title}",
+            body = "${if (finalDiscussion.userName == "Admin") "Admin" else finalDiscussion.userName} started: ${finalDiscussion.title}",
             type = "DISCUSSION"
         )
 
         // Subscribe the author to the discussion for comments notifications
-        FirebaseMessaging.getInstance().subscribeToTopic("discussion_${discussion.id}").await()
+        FirebaseMessaging.getInstance().subscribeToTopic("discussion_${finalDiscussion.id}").await()
     }
 
-    fun getDiscussions(onlyApproved: Boolean, onResult: (List<Discussion>) -> Unit): ListenerRegistration {
-        val query = if (onlyApproved) {
-            db.collection(AppConfig.Collections.DISCUSSIONS).whereEqualTo("status", "APPROVED")
-        } else {
-            db.collection(AppConfig.Collections.DISCUSSIONS)
+    fun getDiscussions(treeId: String = "primary", onlyApproved: Boolean, onResult: (List<Discussion>) -> Unit): ListenerRegistration {
+        var query: Query = db.collection(AppConfig.Collections.DISCUSSIONS)
+        
+        if (onlyApproved) {
+            query = query.whereEqualTo("status", "APPROVED")
         }
         
         return query.addSnapshotListener { snapshot, error ->
             if (error != null) return@addSnapshotListener
-            val discussions = snapshot?.toObjects(Discussion::class.java) ?: emptyList()
+            val discussions = snapshot?.toObjects(Discussion::class.java).orEmpty()
+                .filter { belongsToTree(it.treeId, treeId) }
             onResult(discussions.sortedByDescending { it.timestamp })
         }
     }
@@ -643,9 +766,25 @@ object FirebaseManager {
         db.collection(AppConfig.Collections.DISCUSSIONS).document(discussionId).update("status", "APPROVED").await()
     }
 
-    suspend fun deleteDiscussion(discussionId: String) {
+    suspend fun deleteDiscussion(discussionId: String, userId: String, userName: String) {
         if (discussionId.isBlank()) return
-        db.collection(AppConfig.Collections.DISCUSSIONS).document(discussionId).delete().await()
+        val docRef = db.collection(AppConfig.Collections.DISCUSSIONS).document(discussionId)
+        val snapshot = docRef.get().await()
+        val title = snapshot.getString("title") ?: "Discussion"
+
+        docRef.delete().await()
+
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                userName = userName,
+                action = "DELETE",
+                targetType = "DISCUSSION",
+                targetId = discussionId,
+                targetName = title
+            )
+        )
     }
 
     suspend fun addDiscussionComment(discussionId: String, comment: Comment) {
@@ -653,8 +792,22 @@ object FirebaseManager {
         
         val docRef = db.collection(AppConfig.Collections.DISCUSSIONS).document(discussionId)
         // Use a simple update with arrayUnion instead of a transaction.
-        // arrayUnion is atomic and supports offline persistence (latency compensation).
+        // arrayUnion is atomic and supports offline persistence (latency persistence).
         docRef.update("comments", com.google.firebase.firestore.FieldValue.arrayUnion(comment)).await()
+
+        val discussion = docRef.get().await().toObject(Discussion::class.java)
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = comment.userId,
+                userName = comment.userName,
+                action = "COMMENT",
+                targetType = "DISCUSSION",
+                targetId = discussionId,
+                targetName = discussion?.title,
+                details = comment.text
+            )
+        )
 
         // Trigger notification
         triggerNotification(
@@ -728,6 +881,22 @@ object FirebaseManager {
             val updatedReactions = reactionsRaw.toMutableMap()
             updatedReactions[emoji] = userIds
             transaction.update(docRef, "reactions", updatedReactions)
+
+            if (isAdded) {
+                transaction.set(
+                    db.collection(AppConfig.Collections.ACTIVITY_LOG).document(UUID.randomUUID().toString()),
+                    ActivityLog(
+                        id = UUID.randomUUID().toString(),
+                        userId = userId,
+                        userName = userName,
+                        action = "REACTION",
+                        targetType = "MEMORY",
+                        targetId = memoryId,
+                        targetName = memoryTitle,
+                        details = emoji
+                    )
+                )
+            }
         }.await()
 
         if (isAdded && targetUserId != null && targetUserId != userId) {
@@ -758,9 +927,23 @@ object FirebaseManager {
 
         docRef.update("comments", com.google.firebase.firestore.FieldValue.arrayUnion(comment)).await()
 
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = comment.userId,
+                userName = comment.userName,
+                action = "COMMENT",
+                targetType = "MEMORY",
+                targetId = memoryId,
+                targetName = memoryTitle,
+                details = comment.text
+            )
+        )
+
         // Trigger notification to memory topic (others following it)
+        val treeIdSuffix = if (memory?.treeId == "primary") "" else "_${memory?.treeId}"
         triggerNotification(
-            topic = "memory_$memoryId",
+            topic = "memory_${memoryId}${treeIdSuffix}",
             title = "New Comment on Photo",
             body = "${if (comment.userName == "Admin") "Admin" else comment.userName} commented: ${comment.text}",
             type = "MEMORY_COMMENT",
@@ -783,13 +966,12 @@ object FirebaseManager {
         }
 
         // Subscribe to memory updates
-        FirebaseMessaging.getInstance().subscribeToTopic("memory_$memoryId").await()
+        FirebaseMessaging.getInstance().subscribeToTopic("memory_${memoryId}${treeIdSuffix}").await()
     }
 
     // Cookbook
-    fun getRecipes(onResult: (List<Recipe>) -> Unit): ListenerRegistration {
+    fun getRecipes(treeId: String = "primary", onResult: (List<Recipe>) -> Unit): ListenerRegistration {
         return db.collection(AppConfig.Collections.RECIPES)
-            .orderBy("timestamp")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
                 
@@ -846,35 +1028,65 @@ object FirebaseManager {
                             imageUrl = data["imageUrl"] as? String ?: "",
                             reactions = reactions,
                             comments = comments,
-                            timestamp = (data["timestamp"] as? Long) ?: System.currentTimeMillis()
+                            timestamp = (data["timestamp"] as? Long) ?: System.currentTimeMillis(),
+                            treeId = data["treeId"] as? String ?: "primary"
                         )
                     } catch (e: Exception) {
                         Log.e("FirebaseManager", "Error parsing recipe ${doc.id}", e)
                         null
                     }
-                } ?: emptyList()
+                }?.filter { belongsToTree(it.treeId, treeId) } ?: emptyList()
 
                 onResult(recipes.sortedByDescending { it.timestamp })
             }
     }
 
 
-    suspend fun submitRecipe(recipe: Recipe) {
-        db.collection(AppConfig.Collections.RECIPES).document(recipe.id).set(recipe).await()
+    suspend fun submitRecipe(recipe: Recipe, treeId: String) {
+        val finalRecipe = recipe.copy(treeId = treeId)
+        db.collection(AppConfig.Collections.RECIPES).document(finalRecipe.id).set(finalRecipe).await()
         
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = finalRecipe.authorId,
+                userName = finalRecipe.authorName,
+                action = "CREATE",
+                targetType = "RECIPE",
+                targetId = finalRecipe.id,
+                targetName = finalRecipe.title
+            )
+        )
+
         triggerNotification(
-            topic = "recipes",
+            topic = if (treeId == "primary") "recipes" else "recipes_$treeId",
             title = "New Recipe Added",
-            body = "${if (recipe.authorName == "Admin") "Admin" else recipe.authorName} added a recipe: ${recipe.title}",
+            body = "${if (finalRecipe.authorName == "Admin") "Admin" else finalRecipe.authorName} added a recipe: ${finalRecipe.title}",
             type = "RECIPE"
         )
         // Award points for recipe submission (20 points as per snapshot)
-        awardPoints(recipe.authorId, 20)
+        awardPoints(finalRecipe.authorId, 20)
     }
 
-    suspend fun deleteRecipe(recipeId: String) {
+    suspend fun deleteRecipe(recipeId: String, userId: String, userName: String) {
         if (recipeId.isBlank()) return
-        db.collection(AppConfig.Collections.RECIPES).document(recipeId).delete().await()
+        val docRef = db.collection(AppConfig.Collections.RECIPES).document(recipeId)
+        val snapshot = docRef.get().await()
+        val title = snapshot.getString("title") ?: "Recipe"
+
+        docRef.delete().await()
+
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                userName = userName,
+                action = "DELETE",
+                targetType = "RECIPE",
+                targetId = recipeId,
+                targetName = title
+            )
+        )
     }
 
     suspend fun toggleRecipeReaction(recipeId: String, emoji: String, userId: String, userName: String) {
@@ -910,6 +1122,22 @@ object FirebaseManager {
             val updatedReactions = reactionsRaw.toMutableMap()
             updatedReactions[emoji] = userIds
             transaction.update(docRef, "reactions", updatedReactions)
+
+            if (isAdded) {
+                transaction.set(
+                    db.collection(AppConfig.Collections.ACTIVITY_LOG).document(UUID.randomUUID().toString()),
+                    ActivityLog(
+                        id = UUID.randomUUID().toString(),
+                        userId = userId,
+                        userName = userName,
+                        action = "REACTION",
+                        targetType = "RECIPE",
+                        targetId = recipeId,
+                        targetName = recipeTitle,
+                        details = emoji
+                    )
+                )
+            }
         }.await()
 
         if (isAdded && targetUserId != null && targetUserId != userId) {
@@ -940,9 +1168,23 @@ object FirebaseManager {
 
         docRef.update("comments", com.google.firebase.firestore.FieldValue.arrayUnion(comment)).await()
 
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = comment.userId,
+                userName = comment.userName,
+                action = "COMMENT",
+                targetType = "RECIPE",
+                targetId = recipeId,
+                targetName = recipeTitle,
+                details = comment.text
+            )
+        )
+
         // Trigger notification to general recipes topic
+        val treeIdSuffix = if (recipe?.treeId == "primary") "" else "_${recipe?.treeId}"
         triggerNotification(
-            topic = "recipes",
+            topic = if (recipe?.treeId == "primary") "recipes" else "recipes$treeIdSuffix",
             title = "New Comment on Recipe",
             body = "${comment.userName} commented on \"${recipeTitle ?: recipeId}\": ${comment.text}",
             type = "RECIPE_COMMENT",
@@ -966,33 +1208,62 @@ object FirebaseManager {
     }
 
     // Traditions
-    fun getTraditions(onResult: (List<Tradition>) -> Unit): ListenerRegistration {
+    fun getTraditions(treeId: String = "primary", onResult: (List<Tradition>) -> Unit): ListenerRegistration {
         return db.collection(AppConfig.Collections.TRADITIONS)
-            .orderBy("timestamp")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
-                val traditions = snapshot?.toObjects(Tradition::class.java) ?: emptyList()
+                val traditions = snapshot?.toObjects(Tradition::class.java).orEmpty()
+                    .filter { belongsToTree(it.treeId, treeId) }
                 onResult(traditions.sortedByDescending { it.timestamp })
             }
     }
 
 
-    suspend fun submitTradition(tradition: Tradition) {
-        db.collection(AppConfig.Collections.TRADITIONS).document(tradition.id).set(tradition).await()
+    suspend fun submitTradition(tradition: Tradition, treeId: String) {
+        val finalTradition = tradition.copy(treeId = treeId)
+        db.collection(AppConfig.Collections.TRADITIONS).document(finalTradition.id).set(finalTradition).await()
         
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = finalTradition.authorId,
+                userName = finalTradition.authorName,
+                action = "CREATE",
+                targetType = "TRADITION",
+                targetId = finalTradition.id,
+                targetName = finalTradition.title
+            )
+        )
+
         triggerNotification(
-            topic = "traditions",
+            topic = if (treeId == "primary") "traditions" else "traditions_$treeId",
             title = "New Tradition Shared",
-            body = "${if (tradition.authorName == "Admin") "Admin" else tradition.authorName} shared: ${tradition.title}",
+            body = "${if (finalTradition.authorName == "Admin") "Admin" else finalTradition.authorName} shared: ${finalTradition.title}",
             type = "TRADITION"
         )
         // Award points for tradition submission (15 points as per snapshot)
-        awardPoints(tradition.authorId, 15)
+        awardPoints(finalTradition.authorId, 15)
     }
 
-    suspend fun deleteTradition(traditionId: String) {
+    suspend fun deleteTradition(traditionId: String, userId: String, userName: String) {
         if (traditionId.isBlank()) return
-        db.collection(AppConfig.Collections.TRADITIONS).document(traditionId).delete().await()
+        val docRef = db.collection(AppConfig.Collections.TRADITIONS).document(traditionId)
+        val snapshot = docRef.get().await()
+        val title = snapshot.getString("title") ?: "Tradition"
+
+        docRef.delete().await()
+
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                userName = userName,
+                action = "DELETE",
+                targetType = "TRADITION",
+                targetId = traditionId,
+                targetName = title
+            )
+        )
     }
 
     suspend fun toggleTraditionReaction(traditionId: String, emoji: String, userId: String, userName: String) {
@@ -1028,6 +1299,22 @@ object FirebaseManager {
             val updatedReactions = reactionsRaw.toMutableMap()
             updatedReactions[emoji] = userIds
             transaction.update(docRef, "reactions", updatedReactions)
+
+            if (isAdded) {
+                transaction.set(
+                    db.collection(AppConfig.Collections.ACTIVITY_LOG).document(UUID.randomUUID().toString()),
+                    ActivityLog(
+                        id = UUID.randomUUID().toString(),
+                        userId = userId,
+                        userName = userName,
+                        action = "REACTION",
+                        targetType = "TRADITION",
+                        targetId = traditionId,
+                        targetName = traditionTitle,
+                        details = emoji
+                    )
+                )
+            }
         }.await()
 
         if (isAdded && targetUserId != null && targetUserId != userId) {
@@ -1058,9 +1345,23 @@ object FirebaseManager {
 
         docRef.update("comments", com.google.firebase.firestore.FieldValue.arrayUnion(comment)).await()
 
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = comment.userId,
+                userName = comment.userName,
+                action = "COMMENT",
+                targetType = "TRADITION",
+                targetId = traditionId,
+                targetName = traditionTitle,
+                details = comment.text
+            )
+        )
+
         // Trigger notification to general traditions topic
+        val treeIdSuffix = if (tradition?.treeId == "primary") "" else "_${tradition?.treeId}"
         triggerNotification(
-            topic = "traditions",
+            topic = if (tradition?.treeId == "primary") "traditions" else "traditions$treeIdSuffix",
             title = "New Comment on Tradition",
             body = "${comment.userName} commented on \"${traditionTitle ?: traditionId}\": ${comment.text}",
             type = "TRADITION_COMMENT",
@@ -1084,9 +1385,8 @@ object FirebaseManager {
     }
 
     // Memory Lane
-    fun getMilestones(onResult: (List<Milestone>) -> Unit): ListenerRegistration {
+    fun getMilestones(treeId: String = "primary", onResult: (List<Milestone>) -> Unit): ListenerRegistration {
         return db.collection(AppConfig.Collections.MEMORY_LANE)
-            .orderBy("year")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e("FirebaseManager", "Error fetching milestones", error)
@@ -1132,39 +1432,53 @@ object FirebaseManager {
                             familyContextId = data["familyContextId"] as? String ?: "",
                             reactions = reactions,
                             comments = comments,
-                            taggedMemberIds = data["taggedMemberIds"] as? List<String> ?: emptyList()
+                            taggedMemberIds = data["taggedMemberIds"] as? List<String> ?: emptyList(),
+                            treeId = data["treeId"] as? String ?: "primary"
                         )
                     } catch (e: Exception) {
                         Log.e("FirebaseManager", "Error parsing milestone ${doc.id}", e)
                         null
                     }
-                } ?: emptyList()
+                }?.filter { belongsToTree(it.treeId, treeId) } ?: emptyList()
                 onResult(milestones.sortedBy { it.year })
             }
     }
 
 
-    suspend fun submitMilestone(milestone: Milestone) {
-        db.collection(AppConfig.Collections.MEMORY_LANE).document(milestone.id).set(milestone).await()
+    suspend fun submitMilestone(milestone: Milestone, treeId: String) {
+        val finalMilestone = milestone.copy(treeId = treeId)
+        db.collection(AppConfig.Collections.MEMORY_LANE).document(finalMilestone.id).set(finalMilestone).await()
         
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = finalMilestone.authorId,
+                userName = finalMilestone.authorName,
+                action = "CREATE",
+                targetType = "MILESTONE",
+                targetId = finalMilestone.id,
+                targetName = finalMilestone.title
+            )
+        )
+
         triggerNotification(
-            topic = "memorylane",
+            topic = if (treeId == "primary") "memorylane" else "memorylane_$treeId",
             title = "New Milestone Shared",
-            body = "${if (milestone.authorName == "Admin") "Admin" else milestone.authorName} shared: ${milestone.title}",
+            body = "${if (finalMilestone.authorName == "Admin") "Admin" else finalMilestone.authorName} shared: ${finalMilestone.title}",
             type = "MILESTONE"
         )
 
         // Notify tagged members
-        milestone.taggedMemberIds.forEach { memberId ->
+        finalMilestone.taggedMemberIds.forEach { memberId ->
             triggerNotification(
                 topic = "user_$memberId",
                 title = "You were tagged!",
-                body = "${milestone.authorName} tagged you in a new milestone: ${milestone.title}",
+                body = "${finalMilestone.authorName} tagged you in a new milestone: ${finalMilestone.title}",
                 type = "TAGGED_MILESTONE"
             )
         }
         // Award points for milestone submission (25 points as per snapshot)
-        awardPoints(milestone.authorId, 25)
+        awardPoints(finalMilestone.authorId, 25)
     }
 
     suspend fun toggleMilestoneReaction(milestoneId: String, emoji: String, userId: String, userName: String) {
@@ -1200,6 +1514,22 @@ object FirebaseManager {
             val updatedReactions = reactionsRaw.toMutableMap()
             updatedReactions[emoji] = userIds
             transaction.update(docRef, "reactions", updatedReactions)
+
+            if (isAdded) {
+                transaction.set(
+                    db.collection(AppConfig.Collections.ACTIVITY_LOG).document(UUID.randomUUID().toString()),
+                    ActivityLog(
+                        id = UUID.randomUUID().toString(),
+                        userId = userId,
+                        userName = userName,
+                        action = "REACTION",
+                        targetType = "MILESTONE",
+                        targetId = milestoneId,
+                        targetName = milestoneTitle,
+                        details = emoji
+                    )
+                )
+            }
         }.await()
 
         if (isAdded && targetUserId != null && targetUserId != userId) {
@@ -1230,9 +1560,23 @@ object FirebaseManager {
 
         docRef.update("comments", com.google.firebase.firestore.FieldValue.arrayUnion(comment)).await()
 
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = comment.userId,
+                userName = comment.userName,
+                action = "COMMENT",
+                targetType = "MILESTONE",
+                targetId = milestoneId,
+                targetName = milestoneTitle,
+                details = comment.text
+            )
+        )
+
         // Trigger notification to general topic
+        val treeIdSuffix = if (data?.get("treeId") == "primary") "" else "_${data?.get("treeId")}"
         triggerNotification(
-            topic = "memorylane",
+            topic = if (data?.get("treeId") == "primary") "memorylane" else "memorylane$treeIdSuffix",
             title = "New Comment on Milestone",
             body = "${comment.userName} commented on \"${milestoneTitle ?: "Milestone"}\": ${comment.text}",
             type = "MILESTONE_COMMENT",
@@ -1255,9 +1599,83 @@ object FirebaseManager {
         }
     }
 
-    suspend fun deleteMilestone(milestoneId: String) {
+    suspend fun deleteMilestone(milestoneId: String, userId: String, userName: String) {
         if (milestoneId.isBlank()) return
-        db.collection(AppConfig.Collections.MEMORY_LANE).document(milestoneId).delete().await()
+        val docRef = db.collection(AppConfig.Collections.MEMORY_LANE).document(milestoneId)
+        val snapshot = docRef.get().await()
+        val title = snapshot.getString("title") ?: "Milestone"
+
+        docRef.delete().await()
+
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                userName = userName,
+                action = "DELETE",
+                targetType = "MILESTONE",
+                targetId = milestoneId,
+                targetName = title
+            )
+        )
+    }
+
+    // Calendar Events
+    suspend fun submitCalendarEvent(event: CalendarEvent, treeId: String) {
+        val eventId = if (event.id.isEmpty()) UUID.randomUUID().toString() else event.id
+        val finalEvent = event.copy(id = eventId, treeId = treeId)
+        db.collection(AppConfig.Collections.CALENDAR_EVENTS).document(eventId).set(finalEvent).await()
+
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = "Admin", // Calendar events are usually admin-driven in this app context
+                userName = "Admin",
+                action = "CREATE",
+                targetType = "EVENT",
+                targetId = eventId,
+                targetName = event.title
+            )
+        )
+
+        triggerNotification(
+            topic = if (treeId == "primary") "events" else "events_$treeId",
+            title = "New Family Event: ${event.title}",
+            body = "${event.type} on ${event.date}${if (event.location.isNotEmpty()) " at ${event.location}" else ""}",
+            type = "CALENDAR_EVENT",
+            relatedId = eventId
+        )
+    }
+
+    fun getCalendarEvents(treeId: String = "primary", onResult: (List<CalendarEvent>) -> Unit): ListenerRegistration {
+        return db.collection(AppConfig.Collections.CALENDAR_EVENTS)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val events = snapshot?.toObjects(CalendarEvent::class.java).orEmpty()
+                    .filter { belongsToTree(it.treeId, treeId) }
+                onResult(events)
+            }
+    }
+
+    suspend fun deleteCalendarEvent(eventId: String, userId: String, userName: String) {
+        if (eventId.isBlank()) return
+        val docRef = db.collection(AppConfig.Collections.CALENDAR_EVENTS).document(eventId)
+        val snapshot = docRef.get().await()
+        val title = snapshot.getString("title") ?: "Event"
+
+        docRef.delete().await()
+
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                userName = userName,
+                action = "DELETE",
+                targetType = "EVENT",
+                targetId = eventId,
+                targetName = title
+            )
+        )
     }
 
     // Deletion Requests
@@ -1502,6 +1920,120 @@ object FirebaseManager {
                 if (error != null) return@addSnapshotListener
                 val sessions = snapshot?.toObjects(GameSession::class.java) ?: emptyList()
                 onResult(sessions)
+            }
+    }
+
+    // Business Directory
+    fun getBusinesses(treeId: String = "primary", onResult: (List<Business>) -> Unit): ListenerRegistration {
+        return db.collection(AppConfig.Collections.BUSINESSES)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val businesses = snapshot?.toObjects(Business::class.java).orEmpty()
+                    .filter { belongsToTree(it.treeId, treeId) }
+                    .sortedByDescending { it.timestamp }
+                onResult(businesses)
+            }
+    }
+
+    suspend fun submitBusiness(business: Business, treeId: String) {
+        val id = if (business.id.isEmpty()) UUID.randomUUID().toString() else business.id
+        val finalBusiness = business.copy(id = id, treeId = treeId)
+        db.collection(AppConfig.Collections.BUSINESSES).document(id).set(finalBusiness).await()
+        
+        triggerNotification(
+            topic = if (treeId == "primary") "business" else "business_$treeId",
+            title = "New Business Added",
+            body = "${finalBusiness.ownerName} added their business: ${finalBusiness.name}",
+            type = "BUSINESS"
+        )
+        awardPoints(business.addedBy, 15)
+    }
+
+    suspend fun deleteBusiness(businessId: String, userId: String, userName: String) {
+        if (businessId.isBlank()) return
+        val docRef = db.collection(AppConfig.Collections.BUSINESSES).document(businessId)
+        val snapshot = docRef.get().await()
+        val title = snapshot.getString("name") ?: "Business"
+
+        docRef.delete().await()
+
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                userName = userName,
+                action = "DELETE",
+                targetType = "BUSINESS",
+                targetId = businessId,
+                targetName = title
+            )
+        )
+    }
+
+    // Achievements
+    fun getAchievements(treeId: String = "primary", onResult: (List<Achievement>) -> Unit): ListenerRegistration {
+        return db.collection(AppConfig.Collections.ACHIEVEMENTS)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val achievements = snapshot?.toObjects(Achievement::class.java).orEmpty()
+                    .filter { belongsToTree(it.treeId, treeId) }
+                    .sortedByDescending { it.timestamp }
+                onResult(achievements)
+            }
+    }
+
+    suspend fun submitAchievement(achievement: Achievement, treeId: String) {
+        val id = if (achievement.id.isEmpty()) UUID.randomUUID().toString() else achievement.id
+        val finalAchievement = achievement.copy(id = id, treeId = treeId)
+        db.collection(AppConfig.Collections.ACHIEVEMENTS).document(id).set(finalAchievement).await()
+
+        triggerNotification(
+            topic = if (treeId == "primary") "achievements" else "achievements_$treeId",
+            title = "New Achievement Shared!",
+            body = "${finalAchievement.memberName} achieved: ${finalAchievement.title}",
+            type = "ACHIEVEMENT"
+        )
+        awardPoints(finalAchievement.addedBy, 30)
+    }
+
+    suspend fun deleteAchievement(achievementId: String, userId: String, userName: String) {
+        if (achievementId.isBlank()) return
+        val docRef = db.collection(AppConfig.Collections.ACHIEVEMENTS).document(achievementId)
+        val snapshot = docRef.get().await()
+        val title = snapshot.getString("title") ?: "Achievement"
+
+        docRef.delete().await()
+
+        logActivity(
+            ActivityLog(
+                id = UUID.randomUUID().toString(),
+                userId = userId,
+                userName = userName,
+                action = "DELETE",
+                targetType = "ACHIEVEMENT",
+                targetId = achievementId,
+                targetName = title
+            )
+        )
+    }
+
+    private suspend fun logActivity(log: ActivityLog) {
+        try {
+            val id = if (log.id.isEmpty()) UUID.randomUUID().toString() else log.id
+            db.collection(AppConfig.Collections.ACTIVITY_LOG).document(id).set(log.copy(id = id)).await()
+        } catch (e: Exception) {
+            Log.e("FirebaseManager", "Failed to log activity", e)
+        }
+    }
+
+    fun getActivityLogs(onResult: (List<ActivityLog>) -> Unit): ListenerRegistration {
+        return db.collection(AppConfig.Collections.ACTIVITY_LOG)
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(100)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val logs = snapshot?.toObjects(ActivityLog::class.java) ?: emptyList()
+                onResult(logs)
             }
     }
 }

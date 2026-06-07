@@ -254,9 +254,21 @@ fun generatePanchangForMonth(month: YearMonth, isHindi: Boolean = false): Map<Lo
 
     for (day in 1..month.lengthOfMonth()) {
         val date = month.atDay(day)
-        val tithiIndex = (day + month.monthValue * 2 + month.year % 30) % 30
-        val nakshatraIndex = (day + month.monthValue) % 27
-        val yogaIndex = (day + month.monthValue * 3) % 27
+        
+        // Use more accurate Tithi calculation for 2025-2026 based on reference data
+        val tithiIndex = if (month.year == 2026) {
+            val startTithi = PanchangData.startingTithi2026[month.monthValue] ?: 0
+            (startTithi + day - 1) % 30
+        } else if (month.year == 2025) {
+            val startTithi = PanchangData.startingTithi2025[month.monthValue] ?: 0
+            (startTithi + day - 1) % 30
+        } else {
+            (day + month.monthValue * 2 + month.year % 30) % 30
+        }
+        
+        // Nakshatra and Yoga are still approximations but shifted for better alignment
+        val nakshatraIndex = (day + month.monthValue + (if(month.year == 2026) 5 else 0)) % 27
+        val yogaIndex = (day + month.monthValue * 3 + (if(month.year == 2026) 10 else 0)) % 27
         val karanaIndex = (day * 2) % 11
         
         val tithiNameEn = tithisEn[tithiIndex]
@@ -268,8 +280,7 @@ fun generatePanchangForMonth(month: YearMonth, isHindi: Boolean = false): Map<Lo
         var isPanchak = false
         var note: String? = null
         
-        // Data from Ram Narayan Panchang 2026 (1.jpg, 5.jpg)
-        // Data for 2026 Major Festivals
+        // Data from reference Panchang data (2025-2026)
         if (month.year == 2026) {
             PanchangData.festivals2026[month.monthValue]?.get(day)?.let {
                 festivals.add(it)
@@ -301,6 +312,11 @@ fun generatePanchangForMonth(month: YearMonth, isHindi: Boolean = false): Map<Lo
             if (shubhMuhurats.isNotEmpty()) {
                 val muhuratStr = shubhMuhurats.joinToString(", ")
                 note = if (isHindi) "शुभ: $muhuratStr" else "Shubh: $muhuratStr"
+            }
+        } else if (month.year == 2025) {
+            // Panchak data for 2025
+            PanchangData.panchak2025[month.monthValue]?.forEach { range ->
+                if (day in range) isPanchak = true
             }
         }
 

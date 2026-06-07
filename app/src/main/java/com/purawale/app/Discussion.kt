@@ -15,6 +15,7 @@ data class Discussion(
     val pollOptions: List<PollOption>? = null,
     val timestamp: Long = System.currentTimeMillis(),
     val status: String = "PENDING", // PENDING, APPROVED
+    val treeId: String = "primary",
     val comments: List<Comment> = emptyList()
 )
 

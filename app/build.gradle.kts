@@ -1,8 +1,24 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
+}
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { stream ->
+        localProperties.load(stream)
+    }
+}
+
+fun secretProperty(name: String): String {
+    return project.findProperty(name)?.toString()
+        ?: localProperties.getProperty(name)
+        ?: ""
 }
 
 android {
@@ -17,15 +33,16 @@ android {
         versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["MAPS_API_KEY"] = secretProperty("MAPS_API_KEY")
     }
 
     signingConfigs {
         create("release") {
             // These should be defined in your local.properties or environment variables
-            storeFile = file(project.findProperty("RELEASE_STORE_FILE") ?: "keystore.jks")
-            storePassword = project.findProperty("RELEASE_STORE_PASSWORD")?.toString() ?: ""
-            keyAlias = project.findProperty("RELEASE_KEY_ALIAS")?.toString() ?: ""
-            keyPassword = project.findProperty("RELEASE_KEY_PASSWORD")?.toString() ?: ""
+            storeFile = file(secretProperty("RELEASE_STORE_FILE").ifBlank { "keystore.jks" })
+            storePassword = secretProperty("RELEASE_STORE_PASSWORD")
+            keyAlias = secretProperty("RELEASE_KEY_ALIAS")
+            keyPassword = secretProperty("RELEASE_KEY_PASSWORD")
         }
     }
 
@@ -82,6 +99,7 @@ dependencies {
     implementation(libs.firebase.messaging)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.generativeai)
 
     // Coil
     implementation(libs.coil.compose)

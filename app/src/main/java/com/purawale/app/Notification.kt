@@ -1,7 +1,6 @@
 package com.purawale.app
 
 import androidx.annotation.Keep
-
 @Keep
 data class AppNotification(
     val id: String = "",
@@ -14,7 +13,7 @@ data class AppNotification(
     val senderId: String? = null,
     val senderName: String? = null,
     val relatedId: String? = null,
-    val isAdminOnly: Boolean = false,
+    val adminOnly: Boolean = false,
     val topic: String? = null,
     val metadata: Map<String, String> = emptyMap()
 )

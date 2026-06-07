@@ -20,5 +20,6 @@ data class Milestone(
     val familyContextId: String = "", // Base family ID for filtering
     val reactions: Map<String, List<String>> = emptyMap(),
     val comments: List<Comment> = emptyList(),
-    val taggedMemberIds: List<String> = emptyList()
+    val taggedMemberIds: List<String> = emptyList(),
+    val treeId: String = "primary"
 )

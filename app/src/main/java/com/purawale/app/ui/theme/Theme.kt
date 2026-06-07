@@ -7,41 +7,45 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = AccentGold,
-    secondary = SoftBrown,
-    tertiary = Pink80,
-    background = DarkBrown,
-    surface = SurfaceBrown,
-    onPrimary = DarkBrown,
-    onSecondary = Sand,
-    onTertiary = Sand,
-    onBackground = Sand,
-    onSurface = Sand,
+    primary = PrimaryModern,
+    secondary = SecondaryModern,
+    tertiary = TertiaryModern,
+    background = DarkBackground,
+    surface = DarkSurface,
+    surfaceVariant = DarkSurfaceHigh,
+    onPrimary = DarkOnSurface,
+    onSecondary = DarkOnSurface,
+    onTertiary = DarkOnSurface,
+    onBackground = DarkOnSurface,
+    onSurface = DarkOnSurface,
+    onSurfaceVariant = DarkMuted,
+    outline = GlassStroke,
+    outlineVariant = GlassStroke,
+    error = ErrorModern
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = DeepBrown,
-    secondary = SoftBrown,
-    tertiary = AccentGold,
-    background = DeepBrown,
-    surface = SurfaceBrown,
-    onPrimary = Sand,
-    onSecondary = Sand,
-    onTertiary = DarkBrown,
-    onBackground = Sand,
-    onSurface = Sand,
+    primary = PrimaryModern,
+    secondary = SecondaryModern,
+    tertiary = TertiaryModern,
+    background = LightBackground,
+    surface = LightSurface,
+    onPrimary = LightSurface,
+    onSecondary = LightSurface,
+    onTertiary = LightSurface,
+    onBackground = LightOnSurface,
+    onSurface = LightOnSurface,
+    error = ErrorModern
 )
 
 @Composable
 fun CircleBirthdaysTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is disabled for a custom "lively" look
+    darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -50,7 +54,7 @@ fun CircleBirthdaysTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
+            window.statusBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }

@@ -15,7 +15,8 @@ data class Memory(
     val status: String = "PENDING", // PENDING, APPROVED
     val reactions: Map<String, List<String>> = emptyMap(), // emoji to list of userIds
     val comments: List<Comment> = emptyList(),
-    val taggedMemberIds: List<String> = emptyList()
+    val taggedMemberIds: List<String> = emptyList(),
+    val treeId: String = "primary"
 )
 
 @Keep

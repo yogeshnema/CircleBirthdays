@@ -80,17 +80,5 @@ const PanchangData = {
         12: {
             25: "क्रिसमस (Christmas)"
         }
-    },
-    panchak2026: {
-        5: [[12, 16], [24, 26]]
-    },
-    muhurats2026: {
-        5: {
-            "Vivah": [1, 3, 8, 12, 13, 14],
-            "Namkaran": [4, 11, 13, 14, 18, 20, 21, 25, 27, 28],
-            "Vyapar Prarambh": [3, 8, 18, 31],
-            "Annaprashan": [8, 14, 20, 21, 28, 29],
-            "Griharambh": [1, 4, 6]
-        }
     }
 };

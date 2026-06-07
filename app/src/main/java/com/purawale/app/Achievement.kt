@@ -5,15 +5,17 @@ import com.google.firebase.firestore.IgnoreExtraProperties
 
 @Keep
 @IgnoreExtraProperties
-data class Tradition(
+data class Achievement(
     val id: String = "",
+    val memberName: String = "",
+    val memberId: String = "",
     val title: String = "",
-    val authorId: String = "",
-    val authorName: String = "",
     val description: String = "",
+    val date: String = "",
+    val location: String = "",
+    val mapsLink: String = "",
     val imageUrl: String = "",
-    val reactions: Map<String, List<String>> = emptyMap(),
-    val comments: List<Comment> = emptyList(),
     val treeId: String = "primary",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val addedBy: String = ""
 )

@@ -12,6 +12,9 @@
     <!-- Cropper.js for Photo Editing -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <!-- Flatpickr for Modern Date Choosing -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <!-- Calendar Manager -->
     <script src="panchangData.js"></script>
     <script src="calendarManager.js"></script>
@@ -230,17 +233,10 @@
                 <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
                     <div>
                         <h2 class="text-4xl font-extrabold text-[#2D241E] tracking-tight mb-2">Family Calendar 2026</h2>
-                        <p class="text-[#2D241E]/60 font-medium">Explore festivals, panchak, and auspicious muhurats.</p>
+                        <p class="text-[#2D241E]/60 font-medium">Explore family events and festivals.</p>
                     </div>
                     <div class="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
-                        <div class="flex bg-slate-100 p-1 rounded-xl mr-2">
-                            <button onclick="switchCalendarView('grid')" id="view-btn-grid" class="px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white shadow-sm text-indigo-600">
-                                <i class="fas fa-grid-2 mr-1"></i> Grid
-                            </button>
-                            <button onclick="switchCalendarView('paper')" id="view-btn-paper" class="px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-500 hover:text-[#2D241E]">
-                                <i class="fas fa-file-invoice mr-1"></i> Paper
-                            </button>
-                        </div>
+                        <!-- View Switcher Removed -->
                         <button onclick="changeMonth(-1)" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-50 text-slate-600 transition">
                             <i class="fas fa-chevron-left"></i>
                         </button>
@@ -270,44 +266,20 @@
                             </div>
                         </div>
 
-                        <!-- Traditional Paper View -->
-                        <div id="calendar-paper-view" class="hidden bg-white rounded-[3rem] shadow-xl border border-black/5 overflow-hidden p-4">
-                            <div class="relative group cursor-zoom-in rounded-[2rem] overflow-hidden" onclick="openPanchangImageModal()">
-                                <img id="monthly-panchang-img" src="calendar/1.jpg" class="w-full h-auto" alt="Traditional Panchang">
-                                <div class="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <span class="bg-white/90 px-6 py-3 rounded-2xl font-bold text-[#2D241E] shadow-xl">
-                                        <i class="fas fa-search-plus mr-2"></i> Click to Enlarge
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Traditional Paper View (Removed) -->
                     </div>
 
-                    <!-- Side Panel: Today's Panchang & Events -->
+                    <!-- Side Panel: Today's Events -->
                     <div class="space-y-8">
                         <div class="bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-indigo-900/20 relative overflow-hidden">
-                            <i class="fas fa-sun absolute -right-6 -top-6 text-9xl text-white/10 rotate-12"></i>
-                            <h3 class="text-xl font-bold mb-6 relative">Today's Panchang</h3>
+                            <i class="fas fa-calendar-day absolute -right-6 -top-6 text-9xl text-white/10 rotate-12"></i>
+                            <h3 class="text-xl font-bold mb-6 relative">Today's Highlights</h3>
                             <div id="today-panchang-details" class="space-y-4 relative">
                                 <!-- Today's details injected here -->
                             </div>
                         </div>
 
-                        <!-- Traditional Reference Image Card -->
-                        <div class="bg-white rounded-[2.5rem] p-6 shadow-xl border border-black/5 overflow-hidden group">
-                            <div class="flex justify-between items-center mb-4 px-2">
-                                <h3 class="text-xl font-bold text-[#2D241E]">Traditional View</h3>
-                                <button onclick="openPanchangImageModal()" class="text-indigo-600 hover:text-indigo-700 text-sm font-bold flex items-center gap-1">
-                                    <i class="fas fa-expand-alt"></i> Enlarge
-                                </button>
-                            </div>
-                            <div class="relative cursor-pointer overflow-hidden rounded-2xl border border-slate-100" onclick="openPanchangImageModal()">
-                                <img id="monthly-panchang-img-small" src="calendar/1.jpg" class="w-full h-auto group-hover:scale-105 transition-transform duration-500" alt="Monthly Panchang Reference">
-                                <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                     <i class="fas fa-search-plus text-white text-3xl"></i>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Traditional Reference Image Card (Removed) -->
 
                         <div class="bg-white rounded-[2.5rem] p-8 shadow-xl border border-black/5">
                             <h3 class="text-xl font-bold text-[#2D241E] mb-6">Upcoming Festivals</h3>
@@ -610,11 +582,11 @@
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Marriage Date</label>
-                            <input type="text" id="edit-marriage" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="Optional">
+                            <input type="date" id="edit-marriage" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="Optional">
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Bereavement Date</label>
-                            <input type="text" id="edit-bereavement" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="Optional">
+                            <input type="date" id="edit-bereavement" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700" placeholder="Optional">
                         </div>
                         <div class="space-y-2">
                             <label class="text-xs font-black text-slate-600 uppercase tracking-widest px-1">Current City</label>
@@ -1034,15 +1006,7 @@
         </div>
     </div>
 
-    <!-- Panchang Image Modal -->
-    <div id="panchang-image-modal" class="hidden fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4 md:p-10" onclick="closePanchangImageModal()">
-        <button class="absolute top-6 right-6 text-white text-3xl hover:text-slate-300 transition">
-            <i class="fas fa-times"></i>
-        </button>
-        <div class="max-w-5xl w-full h-full flex items-center justify-center" onclick="event.stopPropagation()">
-            <img id="modal-panchang-img" src="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl">
-        </div>
-    </div>
+    <!-- Panchang Image Modal (Removed) -->
 
     <!-- Calendar Detail Modal -->
     <div id="calendar-detail-modal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[130] px-4 backdrop-blur-sm">
@@ -1056,31 +1020,9 @@
             </div>
             <div class="p-8 overflow-y-auto">
                 <div id="calendar-modal-content" class="space-y-6">
-                    <!-- Panchang Details -->
-                    <div id="calendar-panchang-section" class="hidden">
-                        <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Panchang Details</h4>
-                        <div id="calendar-panchang-details" class="grid grid-cols-2 gap-4">
-                            <!-- Injected -->
-                        </div>
-                    </div>
-
-                    <!-- Muhurats -->
-                    <div id="calendar-muhurat-section" class="hidden">
-                        <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Auspicious Muhurats</h4>
-                        <div id="calendar-muhurat-list" class="space-y-3">
-                            <!-- Injected -->
-                        </div>
-                    </div>
-
-                    <!-- Panchak Warning -->
-                    <div id="calendar-panchak-warning" class="hidden p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-start gap-4">
-                        <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-amber-900">Panchak Period</p>
-                            <p class="text-xs text-amber-700 font-medium">Certain auspicious activities should be avoided during this time.</p>
-                        </div>
+                    <!-- Event Details (Primary focus now) -->
+                    <div id="calendar-event-details">
+                         <!-- Event specifics injected here -->
                     </div>
                 </div>
             </div>
@@ -1179,6 +1121,7 @@
 
         // Core App State
         let currentUser = null;
+        let dobPicker, marriagePicker, bereavementPicker;
         let allMembers = [];
         let membersPromise = null;
         let treeScale = 0.25;
@@ -3044,18 +2987,51 @@
             document.getElementById('edit-gender').value = member.gender || 'Male';
 
             const dobInput = document.getElementById('edit-dob');
+            const marriageInput = document.getElementById('edit-marriage');
+            const bereavementInput = document.getElementById('edit-bereavement');
+
+            if (dobPicker) dobPicker.destroy();
+            if (marriagePicker) marriagePicker.destroy();
+            if (bereavementPicker) bereavementPicker.destroy();
+
             if (isReadOnly) {
                 dobInput.type = "text";
                 dobInput.value = formatDateWithAge(member.dateOfBirth);
+                marriageInput.type = "text";
+                marriageInput.value = member.marriageDate || '';
+                bereavementInput.type = "text";
+                bereavementInput.value = member.bereavementDate || '';
             } else {
-                dobInput.type = "date";
+                dobInput.type = "text";
                 dobInput.value = member.dateOfBirth || '';
+                dobPicker = flatpickr(dobInput, {
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "F j, Y",
+                    allowInput: true
+                });
+
+                marriageInput.type = "text";
+                marriageInput.value = member.marriageDate || '';
+                marriagePicker = flatpickr(marriageInput, {
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "F j, Y",
+                    allowInput: true
+                });
+
+                bereavementInput.type = "text";
+                bereavementInput.value = member.bereavementDate || '';
+                bereavementPicker = flatpickr(bereavementInput, {
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "F j, Y",
+                    allowInput: true
+                });
             }
 
             document.getElementById('edit-phone').value = member.phoneNumber || '';
             document.getElementById('edit-email').value = member.email || '';
-            document.getElementById('edit-marriage').value = member.marriageDate || '';
-            document.getElementById('edit-bereavement').value = member.bereavementDate || '';
             document.getElementById('edit-location').value = member.location || '';
             document.getElementById('edit-facebook').value = member.facebookUrl || '';
             document.getElementById('edit-instagram').value = member.instagramUrl || '';
@@ -3135,11 +3111,11 @@
                     name: document.getElementById('edit-name').value,
                     familyId: document.getElementById('edit-familyId').value.toUpperCase(),
                     gender: document.getElementById('edit-gender').value,
-                    dateOfBirth: document.getElementById('edit-dob').value,
+                    dateOfBirth: document.getElementById('edit-dob')._flatpickr ? document.getElementById('edit-dob')._flatpickr.input.value : document.getElementById('edit-dob').value,
                     phoneNumber: document.getElementById('edit-phone').value,
                     email: document.getElementById('edit-email').value,
-                    marriageDate: document.getElementById('edit-marriage').value,
-                    bereavementDate: document.getElementById('edit-bereavement').value,
+                    marriageDate: document.getElementById('edit-marriage')._flatpickr ? document.getElementById('edit-marriage')._flatpickr.input.value : document.getElementById('edit-marriage').value,
+                    bereavementDate: document.getElementById('edit-bereavement')._flatpickr ? document.getElementById('edit-bereavement')._flatpickr.input.value : document.getElementById('edit-bereavement').value,
                     location: document.getElementById('edit-location').value,
                     facebookUrl: document.getElementById('edit-facebook').value,
                     instagramUrl: document.getElementById('edit-instagram').value,

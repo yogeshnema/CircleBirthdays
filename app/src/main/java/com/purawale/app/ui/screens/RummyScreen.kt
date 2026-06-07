@@ -82,6 +82,7 @@ fun RummyScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
+                    .navigationBarsPadding()
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -133,15 +134,37 @@ fun RummyScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1B5E20)
                                 )
-                                if (session.status == "ACTIVE") {
-                                    Text("Remaining in Deck: $deckCount", style = MaterialTheme.typography.bodyMedium)
+                if (session.status == "ACTIVE") {
+                                    Text("Deck: $deckCount cards", style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
                     }
                 }
 
-                Spacer(Modifier.height(32.dp))
+                Spacer(Modifier.height(16.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(18.dp),
+                    color = if (session.currentTurn == user.id) Color(0xFFFFF8E1) else Color.White.copy(alpha = 0.18f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+                ) {
+                    Text(
+                        text = when {
+                            session.winnerId != null -> if (session.winnerId == user.id) "You won this hand" else "$otherPlayerName won this hand"
+                            session.status == "WAITING" -> "Waiting for another player"
+                            session.currentTurn == user.id && myHand.size <= 10 -> "Draw from the deck or discard pile"
+                            session.currentTurn == user.id -> "Select a card, then discard or declare"
+                            else -> "Waiting for $otherPlayerName"
+                        },
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        color = if (session.currentTurn == user.id) Color(0xFF1B5E20) else Color.White,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
 
                 // Board (Deck and Discard Pile)
                 Row(
@@ -196,37 +219,63 @@ fun RummyScreen(
                             isSelected = selectedCard == card,
                             onClick = {
                                 if (session.currentTurn == user.id) {
-                                    if (selectedCard == card) {
-                                        // Discard this card
-                                        discardCard(session, user, card, onUpdateState)
-                                        selectedCard = null
-                                    } else {
-                                        selectedCard = card
-                                    }
+                                    selectedCard = if (selectedCard == card) null else card
                                 }
                             }
                         )
                     }
                 }
-                
-                if (session.currentTurn == user.id && selectedCard != null && myHand.size == 11) {
-                    Button(
-                        onClick = { 
-                            val newState = session.gameState.toMutableMap()
-                            val finalHand = myHandStrings.toMutableList()
-                            if (finalHand.remove(selectedCard?.toString())) {
-                                newState["hand_${user.id}"] = finalHand
-                                val discardPile = (newState["discardPile"] as? List<String>)?.toMutableList() ?: mutableListOf()
-                                discardPile.add(selectedCard!!.toString())
-                                newState["discardPile"] = discardPile
-                                // Declare winner and set turn to null
-                                onUpdateState(newState, null, user.id)
-                            }
-                        },
-                        modifier = Modifier.padding(top = 16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Yellow, contentColor = Color.Black)
+
+                if (session.currentTurn == user.id && selectedCard != null) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
                     ) {
-                        Text("DECLARE & WIN")
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                "Selected: ${selectedCard}",
+                                modifier = Modifier.weight(1f),
+                                color = Color(0xFF1B5E20),
+                                fontWeight = FontWeight.Bold
+                            )
+                            Button(
+                                onClick = {
+                                    selectedCard?.let { card ->
+                                        discardCard(session, user, card, onUpdateState)
+                                        selectedCard = null
+                                    }
+                                },
+                                enabled = myHand.size == 11,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B5E20), contentColor = Color.White)
+                            ) {
+                                Text("Discard")
+                            }
+                            Button(
+                                onClick = {
+                                    val newState = session.gameState.toMutableMap()
+                                    val finalHand = myHandStrings.toMutableList()
+                                    if (finalHand.remove(selectedCard?.toString())) {
+                                        newState["hand_${user.id}"] = finalHand
+                                        val discardPile = (newState["discardPile"] as? List<String>)?.toMutableList() ?: mutableListOf()
+                                        discardPile.add(selectedCard!!.toString())
+                                        newState["discardPile"] = discardPile
+                                        onUpdateState(newState, null, user.id)
+                                        selectedCard = null
+                                    }
+                                },
+                                enabled = myHand.size == 11,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFC857), contentColor = Color.Black)
+                            ) {
+                                Text("Declare")
+                            }
+                        }
                     }
                 }
             }

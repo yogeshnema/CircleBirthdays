@@ -86,8 +86,65 @@ object PanchangData {
         )
     )
 
+    val panchak2025 = mapOf(
+        1 to listOf(26..30),
+        2 to listOf(22..27),
+        3 to listOf(22..26),
+        4 to listOf(18..23),
+        5 to listOf(15..20),
+        6 to listOf(12..17),
+        7 to listOf(9..14),
+        8 to listOf(5..10),
+        9 to listOf(2..6, 29..30),
+        10 to listOf(26..31),
+        11 to listOf(23..27),
+        12 to listOf(20..25)
+    )
+
     val panchak2026 = mapOf(
-        5 to listOf(12..16, 24..26)
+        1 to listOf(3..8, 30..31),
+        2 to listOf(1..4, 26..28),
+        3 to listOf(1..3, 26..31),
+        4 to listOf(22..27),
+        5 to listOf(19..24),
+        6 to listOf(16..21),
+        7 to listOf(13..18),
+        8 to listOf(9..14),
+        9 to listOf(6..11),
+        10 to listOf(3..8, 30..31),
+        11 to listOf(1..5, 27..30),
+        12 to listOf(1..2, 24..29)
+    )
+
+    // Tithi index for the 1st of each month (0=Shukla Pratipada, 14=Purnima, 15=Krishna Pratipada, 29=Amavasya)
+    val startingTithi2025 = mapOf(
+        1 to 1,  // Jan 1: Shukla Dwitiya
+        2 to 3,  // Feb 1: Shukla Chaturthi
+        3 to 1,  // Mar 1: Shukla Dwitiya
+        4 to 3,  // Apr 1: Shukla Chaturthi
+        5 to 3,  // May 1: Shukla Chaturthi
+        6 to 5,  // Jun 1: Shukla Shashti
+        7 to 5,  // Jul 1: Shukla Shashti
+        8 to 6,  // Aug 1: Shukla Saptami
+        9 to 8,  // Sep 1: Shukla Navami
+        10 to 9, // Oct 1: Shukla Dashami
+        11 to 10, // Nov 1: Shukla Ekadashi
+        12 to 10  // Dec 1: Shukla Ekadashi
+    )
+
+    val startingTithi2026 = mapOf(
+        1 to 12, // Jan 1: Shukla Trayodashi
+        2 to 13, // Feb 1: Shukla Chaturdashi
+        3 to 11, // Mar 1: Shukla Dwadashi
+        4 to 12, // Apr 1: Shukla Trayodashi
+        5 to 13, // May 1: Shukla Chaturdashi
+        6 to 14, // Jun 1: Purnima
+        7 to 15, // Jul 1: Krishna Pratipada
+        8 to 17, // Aug 1: Krishna Tritiya
+        9 to 19, // Sep 1: Krishna Panchami
+        10 to 20, // Oct 1: Krishna Shashti
+        11 to 21, // Nov 1: Krishna Saptami
+        12 to 22  // Dec 1: Krishna Ashtami
     )
 
     val muhurats2026 = mapOf(

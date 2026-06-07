@@ -12,9 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.purawale.app.Member
 import com.purawale.app.Message
 import com.purawale.app.FirebaseManager
@@ -140,6 +143,18 @@ fun MessageBubble(message: Message, isMe: Boolean) {
             )
         ) {
             Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                if (!message.imageUrl.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = message.imageUrl,
+                        contentDescription = "Shared Image",
+                        modifier = Modifier
+                            .fillMaxWidth(0.7f)
+                            .aspectRatio(0.7f)
+                            .padding(bottom = 8.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
                 Text(
                     text = message.text,
                     style = MaterialTheme.typography.bodyMedium

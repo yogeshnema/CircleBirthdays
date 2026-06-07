@@ -3,6 +3,7 @@ package com.purawale.app.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -16,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.purawale.app.FirebaseManager
 import com.purawale.app.TriviaQuestion
+import com.purawale.app.t
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,8 +45,13 @@ fun ManageTriviaScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Question")
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = Color(0xFFFFC857),
+                contentColor = Color(0xFF080B14),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = t("Add Question", "प्रश्न जोड़ें"))
             }
         }
     ) { padding ->
@@ -96,27 +103,40 @@ fun AddTriviaDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Trivia Question") },
+        containerColor = Color(0xFF1A1C1E),
+        shape = RoundedCornerShape(28.dp),
+        title = { Text(t("Add Trivia Question", "सामान्य ज्ञान प्रश्न जोड़ें"), color = Color.White) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = questionText,
                     onValueChange = { questionText = it },
-                    label = { Text("Question") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text(t("Question", "प्रश्न")) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFFFC857),
+                        focusedLabelColor = Color(0xFFFFC857),
+                        cursorColor = Color(0xFFFFC857)
+                    )
                 )
                 
                 options.forEachIndexed { index, option ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
                             selected = correctAnswerIndex == index,
-                            onClick = { correctAnswerIndex = index }
+                            onClick = { correctAnswerIndex = index },
+                            colors = RadioButtonDefaults.colors(selectedColor = Color(0xFFFFC857))
                         )
                         OutlinedTextField(
                             value = option,
                             onValueChange = { options[index] = it },
-                            label = { Text("Option ${index + 1}") },
-                            modifier = Modifier.fillMaxWidth()
+                            label = { Text(t("Option ${index + 1}", "विकल्प ${index + 1}")) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFFFFC857),
+                                focusedLabelColor = Color(0xFFFFC857),
+                                cursorColor = Color(0xFFFFC857)
+                            )
                         )
                     }
                 }
@@ -124,8 +144,13 @@ fun AddTriviaDialog(
                 OutlinedTextField(
                     value = category,
                     onValueChange = { category = it },
-                    label = { Text("Category (e.g. HISTORY, BIRTHDAYS)") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text(t("Category (e.g. HISTORY, BIRTHDAYS)", "श्रेणी (जैसे इतिहास, जन्मदिन)")) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFFFC857),
+                        focusedLabelColor = Color(0xFFFFC857),
+                        cursorColor = Color(0xFFFFC857)
+                    )
                 )
             }
         },
@@ -140,11 +165,17 @@ fun AddTriviaDialog(
                             category = category
                         ))
                     }
-                }
-            ) { Text("Save") }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFC857)),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Text(t("Save", "सहेजें"), color = Color.Black, fontWeight = FontWeight.Bold)
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text(t("Cancel", "रद्द करें"), color = Color.White.copy(alpha = 0.7f))
+            }
         }
     )
 }

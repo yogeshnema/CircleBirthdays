@@ -41,6 +41,9 @@ data class Member(
     @set:PropertyName("isEditor")
     @PropertyName("isEditor")
     var isEditor: Boolean = false,
+    val isPrimaryTree: Boolean = true,
+    val secondaryTreeEnabled: Boolean = false,
+    val treeId: String = "primary",
     val status: String = "APPROVED",
     val lastLoggedIn: Long? = null,
     val relationship: String? = null,

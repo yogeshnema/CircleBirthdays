@@ -193,13 +193,20 @@ object FamilyUtils {
         // Same Generation
         if (diff == 0) {
             if (tBase == oBase) {
-                if (tId != oId) return if (isFemale) "Wife" else "Husband"
+                if (tId != oId) return if (isFemale) "Patni" else "Pati"
             }
             
             // Any same-generation relative in the core family tree (A-G branches)
             if (tBase != "P" && oBase != "P") {
                 val isElder = isElder(tBase, oBase)
-                if (isTargetSpouse) return if (isFemale) "Bhabhi" else "Jijaji"
+                if (isTargetSpouse) {
+                    if (isFemale) return "Bhabhi"
+                    // If target is observer's sister's husband
+                    val tSpouseBase = tBase
+                    val tSpouse = allMembers.find { it.familyId == tSpouseBase }
+                    if (tSpouse != null && isFemale(tSpouse.gender)) return "Jijaji"
+                    return "Bhaiya" // Default for unknown male spouse in same gen
+                }
                 return if (isFemale) (if (isElder) "Didi" else "Behan") else (if (isElder) "Bhaiya" else "Bhai")
             }
         }
@@ -235,6 +242,11 @@ object FamilyUtils {
                 }
                 if (isFemale) return if (isPaternal) (if (isElder) "Badi Bua" else "Choti Bua") else (if (isElder) "Badi Mausi" else "Choti Mausi")
                 return if (isPaternal) (if (isElder) "Bade Papa" else "Chachaji") else (if (isElder) "Bade Mamaji" else "Chote Mamaji")
+            }
+            
+            // Special case: Spouse's Parent (Sasural side) - if not already caught by mirrored logic
+            if (oId.endsWith("0")) {
+                 // handled by mirroring at start
             }
         }
 
@@ -318,8 +330,8 @@ object FamilyUtils {
         }
 
         // Catch-all for same family branch but unknown depth
-        if (tBase.startsWith(oBase) && diff < -2) return "Grandchild"
-        if (oBase.startsWith(tBase) && diff > 2) return "Grandparent"
+        if (tBase.startsWith(oBase) && diff < -2) return if (isFemale) "Parpoti" else "Parpota"
+        if (oBase.startsWith(tBase) && diff > 2) return if (isFemale) "Pardadi" else "Pardada"
 
         return null
     }

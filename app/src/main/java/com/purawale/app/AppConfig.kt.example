@@ -1,11 +1,11 @@
 package com.purawale.app
 
 object AppConfig {
-    const val ADMIN_PHONE = "9999999999"
+    const val ADMIN_PHONE = "REPLACE_WITH_ADMIN_PHONE"
     const val ADMIN_NAME = "Admin"
-    
-    const val SUPPORT_EMAIL = "bgnema@yahoo.com"
-    const val PRIVACY_POLICY_URL = "https://circlebirthdays.web.app/privacy.html"
+
+    const val SUPPORT_EMAIL = "support@example.com"
+    const val PRIVACY_POLICY_URL = "https://example.com/privacy.html"
 
     object Collections {
         const val MEMBERS = "members"
@@ -21,5 +21,12 @@ object AppConfig {
         const val MEMORY_LANE = "memorylane"
         const val DELETION_REQUESTS = "deletion_requests"
         const val GAME_SESSIONS = "game_sessions"
+        const val CALENDAR_EVENTS = "calendar_events"
+        const val BUSINESSES = "businesses"
+        const val ACHIEVEMENTS = "achievements"
+        const val ACTIVITY_LOG = "activity_log"
     }
+
+    const val GEMINI_MODEL = "gemini-2.5-flash"
+    const val GEMINI_API_KEY = "REPLACE_WITH_GEMINI_API_KEY"
 }

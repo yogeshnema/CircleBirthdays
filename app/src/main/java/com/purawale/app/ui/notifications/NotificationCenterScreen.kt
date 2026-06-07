@@ -18,7 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import com.purawale.app.AppNotification
+import com.purawale.app.R
 import com.purawale.app.t
 import java.text.SimpleDateFormat
 import java.util.*
@@ -35,39 +41,53 @@ fun NotificationCenterScreen(
     // val isHindi = LocalLanguage.current
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text(t("Notifications", "सूचनाएं"), fontWeight = FontWeight.Bold) },
+                title = { Text(t("Notifications", "सूचनाएं"), fontWeight = FontWeight.Bold, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 actions = {
                     TextButton(onClick = onMarkAllRead) {
-                        Text(t("Mark all read", "सभी पढ़े गए"), color = Color(0xFF5D4037))
+                        Text(t("Mark all read", "सभी पढ़े गए"), color = Color(0xFFFFC857))
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFFFFF8E1))
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF080B14).copy(alpha = 0.90f),
+                    titleContentColor = Color.White
+                )
             )
         }
     ) { padding ->
-        if (notifications.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text(t("No notifications", "कोई सूचना नहीं"), color = Color.Gray)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(notifications) { notification ->
-                    NotificationItem(
-                        notification = notification,
-                        isRead = notification.readBy?.contains(userId) == true,
-                        onClick = { onNotificationClick(notification) }
-                    )
+        Box(modifier = Modifier.fillMaxSize()) {
+            Image(
+                painter = painterResource(id = R.drawable.background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                colorFilter = ColorFilter.tint(Color.Black.copy(alpha = 0.75f), BlendMode.Darken)
+            )
+
+            if (notifications.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                    Text(t("No notifications", "कोई सूचना नहीं"), color = Color.White.copy(alpha = 0.6f))
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(notifications) { notification ->
+                        NotificationItem(
+                            notification = notification,
+                            isRead = notification.readBy?.contains(userId) == true,
+                            onClick = { onNotificationClick(notification) }
+                        )
+                    }
                 }
             }
         }
@@ -85,10 +105,11 @@ fun NotificationItem(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = if (isRead) Color.White else Color(0xFFFFFDE7)
+            containerColor = if (isRead) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.18f)
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, if (isRead) Color.White.copy(alpha = 0.1f) else Color(0xFFFFC857).copy(alpha = 0.3f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -96,14 +117,14 @@ fun NotificationItem(
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(Color(0xFFFFE082), CircleShape),
+                    .size(44.dp)
+                    .background(Color.White.copy(alpha = 0.1f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Notifications,
                     contentDescription = null,
-                    tint = Color(0xFF5D4037)
+                    tint = if (isRead) Color.White.copy(alpha = 0.7f) else Color(0xFFFFC857)
                 )
             }
 
@@ -113,17 +134,18 @@ fun NotificationItem(
                 Text(
                     text = notification.title,
                     fontWeight = if (isRead) FontWeight.Normal else FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 16.sp,
+                    color = Color.White
                 )
                 Text(
                     text = notification.body,
                     fontSize = 14.sp,
-                    color = Color.DarkGray
+                    color = Color.White.copy(alpha = 0.8f)
                 )
                 Text(
                     text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(notification.timestamp)),
                     fontSize = 12.sp,
-                    color = Color.Gray
+                    color = Color.White.copy(alpha = 0.5f)
                 )
             }
 

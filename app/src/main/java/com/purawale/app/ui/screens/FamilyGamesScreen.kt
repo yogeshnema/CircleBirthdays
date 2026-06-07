@@ -19,7 +19,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -47,28 +49,28 @@ fun FamilyGamesScreen(
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
-            alpha = 0.3f
+            colorFilter = ColorFilter.tint(Color.Black.copy(alpha = 0.75f), BlendMode.Darken)
         )
 
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
                 TopAppBar(
-                    title = { Text(t("Family Games", "फैमिली गेम्स"), color = Color(0xFF3E2723), fontWeight = FontWeight.ExtraBold) },
+                    title = { Text(t("Family Games", "फैमिली गेम्स"), color = Color.White, fontWeight = FontWeight.ExtraBold) },
                     actions = {
                         if (user.isAdmin) {
                             IconButton(onClick = onManageTrivia) {
-                                Icon(Icons.Default.Settings, contentDescription = "Manage", tint = Color(0xFF5D4037))
+                                Icon(Icons.Default.Settings, contentDescription = "Manage", tint = Color.White)
                             }
                         }
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF5D4037))
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = LightGolden
+                        containerColor = Color(0xFF080B14).copy(alpha = 0.90f)
                     )
                 )
             }
@@ -76,16 +78,17 @@ fun FamilyGamesScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(padding)
+                    .navigationBarsPadding(),
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 item {
                     Text(
                         text = t("Gamification Hub", "गेमिफिकेशन हब"),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color(0xFF3E2723),
-                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     GamificationStats(user)
@@ -165,12 +168,12 @@ fun GamificationStats(user: Member) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
-        border = BorderStroke(2.dp, Color(0xFF5D4037))
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.12f)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier
-                .padding(20.dp)
+                .padding(24.dp)
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -179,28 +182,28 @@ fun GamificationStats(user: Member) {
                 Text(
                     "${t("Level", "स्तर")} ${user.level}",
                     style = MaterialTheme.typography.headlineSmall,
-                    color = Color(0xFF3E2723),
+                    color = Color.White,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
                     "${user.points} ${t("Total Points", "कुल अंक")}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF5D4037),
+                    color = Color.White.copy(alpha = 0.7f),
                     fontWeight = FontWeight.Bold
                 )
             }
             Box(
                 modifier = Modifier
                     .size(60.dp)
-                    .background(Color(0xFFEFEBE9), CircleShape)
-                    .border(2.dp, Color(0xFF5D4037), CircleShape),
+                    .background(Color.White.copy(alpha = 0.1f), CircleShape)
+                    .border(1.dp, Color(0xFFFFC857).copy(alpha = 0.4f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Stars,
                     contentDescription = null,
                     modifier = Modifier.size(36.dp),
-                    tint = Color(0xFFFFC107)
+                    tint = Color(0xFFFFC857)
                 )
             }
         }
@@ -213,13 +216,13 @@ fun SectionHeader(title: String, icon: ImageVector) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color(0xFF5D4037))
-        Spacer(Modifier.width(8.dp))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color(0xFFFFC857))
+        Spacer(Modifier.width(12.dp))
         Text(
             title,
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(0xFF3E2723),
-            fontWeight = FontWeight.ExtraBold
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -231,20 +234,29 @@ fun GameTile(title: String, icon: ImageVector, color: Color, modifier: Modifier 
             .height(110.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFEFEBE9)),
-        border = BorderStroke(2.dp, Color(0xFF5D4037))
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.18f)),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.45f))
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(36.dp))
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .background(color.copy(alpha = 0.28f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+            }
             Spacer(Modifier.height(8.dp))
             Text(
                 title,
-                color = Color(0xFF3E2723),
-                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.labelMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 4.dp)
@@ -259,41 +271,42 @@ fun TriviaCard(onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f)),
-        border = BorderStroke(1.5.dp, Color(0xFF5D4037))
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.12f)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(Color(0xFFEFEBE9), CircleShape)
-                    .border(1.5.dp, Color(0xFF5D4037), CircleShape),
+                    .size(52.dp)
+                    .background(Color.White.copy(alpha = 0.1f), CircleShape)
+                    .border(1.dp, Color(0xFFFFC857).copy(alpha = 0.3f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Quiz, null, tint = Color(0xFFFF9800))
+                Icon(Icons.Default.Quiz, null, tint = Color(0xFFFFC857), modifier = Modifier.size(28.dp))
             }
             Spacer(Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     t("Daily Trivia", "दैनिक प्रश्नोत्तरी"),
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF3E2723),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
                     fontSize = 18.sp
                 )
                 Text(
                     t("Test your family knowledge!", "अपने पारिवारिक ज्ञान का परीक्षण करें!"),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF5D4037),
-                    fontWeight = FontWeight.Bold
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Medium
                 )
             }
             Button(
                 onClick = onClick,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5D4037))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFC857), contentColor = Color.Black),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text(t("Play", "खेलें"), fontWeight = FontWeight.Bold)
             }
@@ -305,31 +318,30 @@ fun TriviaCard(onClick: () -> Unit) {
 fun QuestItem(quest: FamilyQuest, onComplete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f)),
-        border = BorderStroke(1.dp, Color(0xFF5D4037).copy(alpha = 0.5f))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(quest.title, fontWeight = FontWeight.ExtraBold, color = Color(0xFF3E2723))
-                Text(quest.description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF5D4037))
+                Text(quest.title, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(quest.description, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
                 Text(
                     "${quest.pointsReward} ${t("Points", "अंक")}",
-                    color = Color(0xFF2E7D32),
-                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFFFFC857),
+                    fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.labelMedium
                 )
             }
             IconButton(
                 onClick = onComplete,
                 modifier = Modifier
-                    .background(Color(0xFFEFEBE9), CircleShape)
-                    .border(1.dp, Color(0xFF5D4037), CircleShape)
+                    .background(Color.White.copy(alpha = 0.1f), CircleShape)
             ) {
-                Icon(Icons.Default.ChevronRight, contentDescription = "Details", tint = Color(0xFF5D4037))
+                Icon(Icons.Default.ChevronRight, contentDescription = "Details", tint = Color.White)
             }
         }
     }

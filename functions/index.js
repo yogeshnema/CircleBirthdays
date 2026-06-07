@@ -3,6 +3,12 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const CHANNEL_ID = 'family_circle_notifications';
+const ADMIN_PHONE = process.env.ADMIN_PHONE || (functions.config().app && functions.config().app.admin_phone) || '';
+const ADMIN_NAME = process.env.ADMIN_NAME || (functions.config().app && functions.config().app.admin_name) || 'Admin';
+
+function isAdminMember(member) {
+    return !!member && (member.isAdmin || (!!ADMIN_PHONE && member.phoneNumber === ADMIN_PHONE && member.name === ADMIN_NAME));
+}
 
 // Helper to send to topic
 async function sendToTopic(topic, title, body, data = {}) {
@@ -32,7 +38,7 @@ exports.notifyNewMessage = functions.firestore
         // Suppress notification if sender is admin
         const senderDoc = await admin.firestore().collection('members').doc(message.senderId).get();
         const senderData = senderDoc.data();
-        if (senderData && (senderData.isAdmin || (senderData.phoneNumber === "9999999999" && senderData.name === "Admin"))) {
+        if (isAdminMember(senderData)) {
             return null;
         }
 
@@ -68,7 +74,7 @@ exports.dailyEventReminder = functions.pubsub.schedule('0 7 * * *')
         membersSnapshot.forEach(doc => {
             const d = doc.data();
             // Suppress if admin
-            if (d.isAdmin || (d.phoneNumber === "9999999999" && d.name === "Admin")) return;
+            if (isAdminMember(d)) return;
 
             if (d.dateOfBirth && d.dateOfBirth.includes(monthDay)) events.push(`🎂 ${d.name}'s Birthday`);
             if (d.marriageDate && d.marriageDate.includes(monthDay)) events.push(`💍 ${d.name}'s Anniversary`);
@@ -85,7 +91,7 @@ exports.notifyGalleryUpdate = functions.firestore.document('memories/{id}').onWr
         // Suppress notification if author is admin
         const authorDoc = await admin.firestore().collection('members').doc(newData.userId).get();
         const authorData = authorDoc.data();
-        if (authorData && (authorData.isAdmin || (authorData.phoneNumber === "9999999999" && authorData.name === "Admin"))) {
+        if (isAdminMember(authorData)) {
             return sendToTopic('admin_only', 'New Gallery Photo (Admin)', `${newData.userName} shared a new memory.`);
         }
         return sendToTopic('gallery_updates', 'New Gallery Photo', `${newData.userName} shared a new memory.`);
@@ -157,7 +163,7 @@ exports.notifyDiscussionUpdate = functions.firestore.document('discussions/{id}'
         // Suppress notification if author is admin
         const authorDoc = await admin.firestore().collection('members').doc(newData.userId).get();
         const authorData = authorDoc.data();
-        if (authorData && (authorData.isAdmin || (authorData.phoneNumber === "9999999999" && authorData.name === "Admin"))) {
+        if (isAdminMember(authorData)) {
             return sendToTopic('admin_only', 'New Discussion (Admin)', `${newData.userName} started: ${newData.title}`);
         }
         return sendToTopic('all_discussions', 'New Discussion', `${newData.userName} started: ${newData.title}`);

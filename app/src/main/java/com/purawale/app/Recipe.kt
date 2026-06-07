@@ -17,5 +17,6 @@ data class Recipe(
     val imageUrl: String = "",
     val reactions: Map<String, List<String>> = emptyMap(),
     val comments: List<Comment> = emptyList(),
+    val treeId: String = "primary",
     val timestamp: Long = System.currentTimeMillis()
 )

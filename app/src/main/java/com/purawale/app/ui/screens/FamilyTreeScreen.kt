@@ -22,7 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -38,8 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
-import com.purawale.app.*
-import com.purawale.app.ui.theme.LightGolden
+import com.purawale.app.Member
+import com.purawale.app.R
+import com.purawale.app.t
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,9 +51,11 @@ import kotlinx.coroutines.launch
 fun FamilyTreeScreen(
     currentUser: Member,
     members: List<Member>,
+    currentTreeId: String = "primary",
     onNavigateBack: () -> Unit,
     onViewMember: (Member) -> Unit,
-    onEditMember: (Member) -> Unit
+    onEditMember: (Member) -> Unit,
+    onSwitchTree: (String) -> Unit = {}
 ) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -141,6 +147,7 @@ fun FamilyTreeScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { 
@@ -148,120 +155,150 @@ fun FamilyTreeScreen(
                         TextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = { Text(t("Search family...", "परिवार खोजें...")) },
+                            placeholder = { Text(t("Search family...", "परिवार खोजें..."), color = Color.White.copy(alpha = 0.6f)) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color.Transparent,
                                 unfocusedContainerColor = Color.Transparent,
                                 focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
                             ),
                             singleLine = true,
                             trailingIcon = {
                                 IconButton(onClick = { isSearchVisible = false; searchQuery = "" }) {
-                                    Icon(Icons.Default.Close, null)
+                                    Icon(Icons.Default.Close, null, tint = Color.White)
                                 }
                             }
                         )
                     } else {
-                        Text(t("Family Tree", "वंश वृक्ष")) 
+                        Column {
+                            Text(t("Family Tree", "वंश वृक्ष"), color = Color.White, fontWeight = FontWeight.Bold)
+                            if (currentTreeId != "primary") {
+                                Text(
+                                    t("Family Branch", "परिवार शाखा"),
+                                    color = Color(0xFFFFC857),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Normal
+                                )
+                            }
+                        }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
                 },
                 actions = {
                     if (!isSearchVisible) {
                         IconButton(onClick = { isSearchVisible = true }) {
-                            Icon(Icons.Default.Search, "Search")
+                            Icon(Icons.Default.Search, "Search", tint = Color.White)
                         }
                     }
                     IconButton(onClick = { centerOnMember(currentUser.id) }) { 
-                        Icon(Icons.Default.MyLocation, "Find Me", tint = Color(0xFF3E2723)) 
+                        Icon(Icons.Default.MyLocation, "Find Me", tint = Color(0xFFFFC857)) 
                     }
                     IconButton(onClick = { scale = 1f; offset = Offset.Zero; focusedMemberId = null }) { 
-                        Icon(Icons.Default.FilterCenterFocus, "Reset", tint = Color(0xFF3E2723))
+                        Icon(Icons.Default.FilterCenterFocus, "Reset", tint = Color(0xFFFFC857))
                     }
-                }
-            , colors = TopAppBarDefaults.topAppBarColors(containerColor = LightGolden))
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF080B14).copy(alpha = 0.90f),
+                    titleContentColor = Color.White
+                )
+            )
         }
     ) { padding ->
         Box(
             modifier = Modifier
-                .padding(padding)
                 .fillMaxSize()
-                .background(Color(0xFFEFEBE9))
         ) {
-            // Main Canvas for Zoom/Pan
+            Image(
+                painter = painterResource(id = R.drawable.background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                colorFilter = ColorFilter.tint(Color.Black.copy(alpha = 0.75f), BlendMode.Darken)
+            )
+
             Box(
                 modifier = Modifier
+                    .padding(padding)
                     .fillMaxSize()
-                    .onSizeChanged { containerSize = it }
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            awaitFirstDown()
-                            do {
-                                val event = awaitPointerEvent()
-                                isUserInteracting = true
-                            } while (event.changes.any { it.pressed })
-                            isUserInteracting = false
-                        }
-                    }
-                    .pointerInput(Unit) {
-                        detectTransformGestures { centroid, pan, zoom, _ ->
-                            val oldScale = scale
-                            scale = (scale * zoom).coerceIn(0.1f, 10f)
-                            val effectiveZoom = scale / oldScale
-                            
-                            val pivot = Offset(containerSize.width / 2f, containerSize.height / 2f)
-                            offset = (centroid - pivot) - (centroid - pivot - offset) * effectiveZoom + pan
-                            
-                            if (zoom != 1f) focusedMemberId = null
-                        }
-                    }
             ) {
+                // Main Canvas for Zoom/Pan
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = animatedScale
-                            scaleY = animatedScale
-                            translationX = animatedOffset.x
-                            translationY = animatedOffset.y
-                            transformOrigin = TransformOrigin(0.5f, 0.5f)
-                            clip = false
+                        .onSizeChanged { containerSize = it }
+                        .pointerInput(Unit) {
+                            awaitEachGesture {
+                                awaitFirstDown()
+                                do {
+                                    val event = awaitPointerEvent()
+                                    isUserInteracting = true
+                                } while (event.changes.any { it.pressed })
+                                isUserInteracting = false
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectTransformGestures { centroid, pan, zoom, _ ->
+                                val oldScale = scale
+                                scale = (scale * zoom).coerceIn(0.1f, 10f)
+                                val effectiveZoom = scale / oldScale
+                                
+                                val pivot = Offset(containerSize.width / 2f, containerSize.height / 2f)
+                                offset = (centroid - pivot) - (centroid - pivot - offset) * effectiveZoom + pan
+                                
+                                if (zoom != 1f) focusedMemberId = null
+                            }
                         }
                 ) {
                     Box(
                         modifier = Modifier
-                            .wrapContentSize(unbounded = true) // Allow tree to be larger than screen
-                            .onGloballyPositioned { treeCoordinates = it }
-                            .align(Alignment.Center)
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                scaleX = animatedScale
+                                scaleY = animatedScale
+                                translationX = animatedOffset.x
+                                translationY = animatedOffset.y
+                                transformOrigin = TransformOrigin(0.5f, 0.5f)
+                                clip = false
+                            }
                     ) {
-                        Column(
+                        Box(
                             modifier = Modifier
-                                .padding(200.dp), // Padding to allow space for connectors
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .wrapContentSize(unbounded = true) // Allow tree to be larger than screen
+                                .onGloballyPositioned { treeCoordinates = it }
+                                .align(Alignment.Center)
                         ) {
-                            for (root in roots) {
-                                FamilyNode(
-                                    root, 
-                                    members, 
-                                    currentUser = currentUser,
-                                    onView = onViewMember,
-                                    onEdit = onEditMember,
-                                    onCenter = { centerOnMember(it.id) },
-                                    scale = animatedScale, 
-                                    focusedMemberId = focusedMemberId,
-                                    treeRootCoordinates = treeCoordinates,
-                                    onPositionReported = { id, pos -> memberPositions[id] = pos },
-                                    expandedNodes = expandedNodes,
-                                    viewportSize = containerSize,
-                                    viewportOffset = animatedOffset
-                                )
-                                Spacer(modifier = Modifier.height(100.dp))
+                            Column(
+                                modifier = Modifier
+                                    .padding(200.dp), // Padding to allow space for connectors
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                for (root in roots) {
+                                    FamilyNode(
+                                        root, 
+                                        members, 
+                                        currentUser = currentUser,
+                                        currentTreeId = currentTreeId,
+                                        onView = onViewMember,
+                                        onEdit = onEditMember,
+                                        onCenter = { centerOnMember(it.id) },
+                                        onSwitchTree = onSwitchTree,
+                                        scale = animatedScale, 
+                                        focusedMemberId = focusedMemberId,
+                                        treeRootCoordinates = treeCoordinates,
+                                        onPositionReported = { id, pos -> memberPositions[id] = pos },
+                                        expandedNodes = expandedNodes,
+                                        viewportSize = containerSize,
+                                        viewportOffset = animatedOffset
+                                    )
+                                    Spacer(modifier = Modifier.height(100.dp))
+                                }
                             }
                         }
                     }
@@ -275,7 +312,7 @@ fun FamilyTreeScreen(
                     Card(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
-                            .padding(top = 16.dp)
+                            .padding(top = (padding.calculateTopPadding() + 16.dp))
                             .width(300.dp),
                         elevation = CardDefaults.cardElevation(8.dp)
                     ) {
@@ -305,15 +342,17 @@ fun FamilyTreeScreen(
             ) {
                 SmallFloatingActionButton(
                     onClick = { performZoom(1.2f) },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    containerColor = Color(0xFFFFC857),
+                    contentColor = Color(0xFF080B14)
                 ) {
-                    Icon(Icons.Default.Add, "Zoom In")
+                    Icon(Icons.Default.Add, t("Zoom In", "ज़ूम इन"))
                 }
                 SmallFloatingActionButton(
                     onClick = { performZoom(0.8f) },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    containerColor = Color(0xFFFFC857),
+                    contentColor = Color(0xFF080B14)
                 ) {
-                    Icon(Icons.Default.Remove, "Zoom Out")
+                    Icon(Icons.Default.Remove, t("Zoom Out", "ज़ूम आउट"))
                 }
                 FloatingActionButton(
                     onClick = {
@@ -321,9 +360,10 @@ fun FamilyTreeScreen(
                         offset = Offset.Zero
                         focusedMemberId = null
                     },
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = Color(0xFFFFC857),
+                    contentColor = Color(0xFF080B14)
                 ) {
-                    Icon(Icons.Default.CenterFocusStrong, "Reset")
+                    Icon(Icons.Default.CenterFocusStrong, t("Reset", "रीसेट"))
                 }
             }
         }
@@ -335,9 +375,11 @@ fun FamilyNode(
     member: Member,
     allMembers: List<Member>,
     currentUser: Member,
+    currentTreeId: String = "primary",
     onView: (Member) -> Unit,
     onEdit: (Member) -> Unit,
     onCenter: (Member) -> Unit,
+    onSwitchTree: (String) -> Unit = {},
     scale: Float = 1f,
     focusedMemberId: String? = null,
     treeRootCoordinates: LayoutCoordinates? = null,
@@ -365,9 +407,11 @@ fun FamilyNode(
                 MemberSmallCard(
                     member = member, 
                     currentUser = currentUser,
+                    currentTreeId = currentTreeId,
                     onView = onView,
                     onEdit = onEdit,
                     onCenter = onCenter,
+                    onSwitchTree = onSwitchTree,
                     currentScale = scale, 
                     isSelf = member.id == currentUser.id,
                     isFocused = member.id == focusedMemberId,
@@ -402,9 +446,11 @@ fun FamilyNode(
                 MemberSmallCard(
                     member = spouse, 
                     currentUser = currentUser,
+                    currentTreeId = currentTreeId,
                     onView = onView,
                     onEdit = onEdit,
                     onCenter = onCenter,
+                    onSwitchTree = onSwitchTree,
                     currentScale = scale, 
                     isSelf = spouse.id == currentUser.id,
                     isFocused = spouse.id == focusedMemberId,
@@ -433,7 +479,7 @@ fun FamilyNode(
                         ConnectionLine(isVertical = true, length = 32.dp)
                         Box(modifier = Modifier.padding(horizontal = 20.dp)) {
                             FamilyNode(
-                                child, allMembers, currentUser, onView, onEdit, onCenter, scale, 
+                                child, allMembers, currentUser, currentTreeId, onView, onEdit, onCenter, onSwitchTree, scale, 
                                 focusedMemberId, treeRootCoordinates, onPositionReported, expandedNodes,
                                 viewportSize, viewportOffset
                             )
@@ -487,9 +533,11 @@ fun ConnectionLine(
 fun MemberSmallCard(
     member: Member, 
     currentUser: Member,
+    currentTreeId: String = "primary",
     onView: (Member) -> Unit,
     onEdit: (Member) -> Unit,
     onCenter: (Member) -> Unit,
+    onSwitchTree: (String) -> Unit = {},
     currentScale: Float = 1f, 
     isSelf: Boolean = false,
     isFocused: Boolean = false,
@@ -508,7 +556,9 @@ fun MemberSmallCard(
                    member.gender.contains("स्त्री", ignoreCase = true)
     
     val genderColor = if (isFemale) Color(0xFFE91E63) else Color(0xFF2196F3) // Pink for girls, Blue for guys
-    val canEdit = currentUser.isAdmin || currentUser.isEditor || member.id == currentUser.id
+    val canEdit = currentUser.isAdmin || currentUser.isEditor ||
+        (currentTreeId != "primary" && currentTreeId == currentUser.id) ||
+        member.id == currentUser.id
 
     Card(
         onClick = { onCenter(member) },
@@ -609,6 +659,21 @@ fun MemberSmallCard(
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         textAlign = TextAlign.Center
                     )
+                }
+            }
+            
+            if (member.secondaryTreeEnabled) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = { onSwitchTree(member.id) },
+                    modifier = Modifier.height(24.dp).padding(horizontal = 4.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Icon(Icons.Default.AccountTree, null, modifier = Modifier.size(12.dp), tint = Color.White)
+                    Spacer(Modifier.width(4.dp))
+                    Text(t("View Branch", "शाखा देखें"), style = MaterialTheme.typography.labelSmall, color = Color.White)
                 }
             }
 
