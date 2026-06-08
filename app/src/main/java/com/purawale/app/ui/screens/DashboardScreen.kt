@@ -188,9 +188,12 @@ fun DashboardScreen(
     onNavigateToFamilyGames: () -> Unit,
     onNavigateToBusinessDirectory: () -> Unit,
     onNavigateToAchievements: () -> Unit,
+    onNavigateToHelp: () -> Unit = {},
     onNavigateToLoginLog: () -> Unit = {},
     onNavigateToActivityLog: () -> Unit = {},
-    onGenerateAICard: (Member, String) -> Unit = { _, _ -> }
+    onGenerateAICard: (Member, String) -> Unit = { _, _ -> },
+    showWelcomeTour: Boolean = false,
+    onFinishWelcomeTour: (Boolean) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -207,7 +210,7 @@ fun DashboardScreen(
 
     val todayBirthdays = visibleMembers.filter { it.bereavementDate.isNullOrBlank() && isToday(it.dateOfBirth) }
     val todayAnniversaries = visibleMembers
-        .filter { !it.marriageDate.isNullOrBlank() && it.bereavementDate.isNullOrBlank() && isToday(it.marriageDate) }
+        .filter { !it.marriageDate.isNullOrBlank() && isActiveAnniversaryMember(it, allMembers) && isToday(it.marriageDate) }
         .distinctBy {
             val partnerId = if (it.familyId.endsWith("0")) it.familyId.dropLast(1) else it.familyId + "0"
             listOf(it.familyId, partnerId).sorted().joinToString("-")
@@ -219,6 +222,9 @@ fun DashboardScreen(
     }
 
     var showPasswordDialog by remember { mutableStateOf(false) }
+    if (showWelcomeTour) {
+        WelcomeTourDialog(onFinish = onFinishWelcomeTour)
+    }
     if (showPasswordDialog) {
         var newPassword by remember { mutableStateOf("") }
         AlertDialog(
@@ -266,14 +272,17 @@ fun DashboardScreen(
         )
     }
 
-    val isCelebrationDay = remember(user) {
-        isToday(user.dateOfBirth) || (!user.marriageDate.isNullOrBlank() && isToday(user.marriageDate))
+    val isUserAnniversaryActive = remember(user, allMembers) {
+        isActiveAnniversaryMember(user, allMembers)
+    }
+    val isCelebrationDay = remember(user, isUserAnniversaryActive) {
+        isToday(user.dateOfBirth) || (!user.marriageDate.isNullOrBlank() && isUserAnniversaryActive && isToday(user.marriageDate))
     }
     val celebrationText = when {
-        isToday(user.dateOfBirth) && !user.marriageDate.isNullOrBlank() && isToday(user.marriageDate) ->
+        isToday(user.dateOfBirth) && !user.marriageDate.isNullOrBlank() && isUserAnniversaryActive && isToday(user.marriageDate) ->
             t("Double Celebration! Happy Birthday & Anniversary!", "दोहरा जश्न! जन्मदिन और सालगिरह मुबारक!")
         isToday(user.dateOfBirth) -> t("Happy Birthday, ${user.name.split(" ").first()}! 🎉", "जन्मदिन मुबारक, ${user.name.split(" ").first()}! 🎉")
-        !user.marriageDate.isNullOrBlank() && isToday(user.marriageDate) ->
+        !user.marriageDate.isNullOrBlank() && isUserAnniversaryActive && isToday(user.marriageDate) ->
             t("Happy Anniversary! Wishing you togetherness forever! ❤️", "शादी की सालगिरह मुबारक! ❤️")
         else -> ""
     }
@@ -553,6 +562,8 @@ fun DashboardScreen(
                         FeatureItem(t("Achievements", "उपलब्धियां"), Icons.Default.EmojiEvents, MaterialTheme.colorScheme.primary, onNavigateToAchievements),
                         FeatureItem(t("Family Games", "खेल"), Icons.Default.SportsEsports, MaterialTheme.colorScheme.secondary, onNavigateToFamilyGames),
                         FeatureItem(t("Business", "व्यवसाय"), Icons.Default.Business, MaterialTheme.colorScheme.tertiary, onNavigateToBusinessDirectory)
+                    ) + listOf(
+                        FeatureItem(t("Help", "मदद"), Icons.Default.Help, MaterialTheme.colorScheme.primary, onNavigateToHelp)
                     )
 
                     val adminFeatures = if (user.isAdmin) {
@@ -581,7 +592,7 @@ fun DashboardScreen(
                         it.bereavementDate.isNullOrBlank() && isWithinSevenDays(it.dateOfBirth) && !isToday(it.dateOfBirth)
                     }
                     val upcomingAnniversaries = visibleMembers
-                        .filter { !it.marriageDate.isNullOrBlank() && it.bereavementDate.isNullOrBlank() && isWithinSevenDays(it.marriageDate) && !isToday(it.marriageDate) }
+                        .filter { !it.marriageDate.isNullOrBlank() && isActiveAnniversaryMember(it, allMembers) && isWithinSevenDays(it.marriageDate) && !isToday(it.marriageDate) }
                         .distinctBy {
                             val partnerId = if (it.familyId.endsWith("0")) it.familyId.dropLast(1) else it.familyId + "0"
                             listOf(it.familyId, partnerId).sorted().joinToString("-")
@@ -818,6 +829,98 @@ fun DashboardEventItem(
 }
 
 @Composable
+fun WelcomeTourDialog(onFinish: (Boolean) -> Unit) {
+    var stepIndex by remember { mutableStateOf(0) }
+    val steps = listOf(
+        t(
+            "Welcome! This dashboard is your family home base. Use the profile card to view your details, edit allowed information, change your password, or sign out.",
+            "स्वागत है! यह डैशबोर्ड आपका परिवार होम बेस है। प्रोफ़ाइल कार्ड से अपनी जानकारी देखें, अनुमत जानकारी बदलें, पासवर्ड बदलें या लॉग आउट करें।"
+        ),
+        t(
+            "The bell opens notifications. If you see a badge, unread updates are waiting for you.",
+            "बेल आइकन नोटिफ़िकेशन खोलता है। बैज दिखे तो आपके लिए नए अपडेट हैं।"
+        ),
+        t(
+            "Today's Events and Coming Up show birthdays, anniversaries, remembrances, and calendar events so you can greet family on time.",
+            "आज के कार्यक्रम और आगामी भाग जन्मदिन, वर्षगांठ, पुण्यतिथि और कैलेंडर इवेंट दिखाते हैं, ताकि आप समय पर शुभकामना दे सकें।"
+        ),
+        t(
+            "Explore tiles open profiles, family tree, gallery, discussions, messages, cookbook, traditions, memories, calendar, emergency contacts, achievements, games, business directory, and help.",
+            "एक्सप्लोर टाइल प्रोफ़ाइल, वंश वृक्ष, गैलरी, चर्चा, संदेश, नुस्खे, परंपरा, यादें, कैलेंडर, आपातकाल, उपलब्धियां, खेल, व्यवसाय और मदद खोलती हैं।"
+        ),
+        t(
+            "Would you like to see this tour again on your next login?",
+            "क्या आप अगले लॉगिन पर यह टूर फिर देखना चाहेंगे?"
+        )
+    )
+    val isLastStep = stepIndex == steps.lastIndex
+
+    AlertDialog(
+        onDismissRequest = { },
+        containerColor = Color(0xFF111827),
+        shape = RoundedCornerShape(28.dp),
+        icon = {
+            Icon(Icons.Default.TipsAndUpdates, null, tint = Color(0xFFFFC857), modifier = Modifier.size(34.dp))
+        },
+        title = {
+            Text(
+                t("Welcome Tour", "स्वागत टूर"),
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    steps[stepIndex],
+                    color = Color.White.copy(alpha = 0.82f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    t("Step ${stepIndex + 1} of ${steps.size}", "चरण ${stepIndex + 1} / ${steps.size}"),
+                    color = Color.White.copy(alpha = 0.58f),
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        },
+        confirmButton = {
+            if (isLastStep) {
+                Button(
+                    onClick = { onFinish(true) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFC857), contentColor = Color(0xFF101522)),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text(t("Show Again", "फिर दिखाएं"), fontWeight = FontWeight.Bold)
+                }
+            } else {
+                Button(
+                    onClick = { stepIndex++ },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFC857), contentColor = Color(0xFF101522)),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Text(t("Next", "अगला"), fontWeight = FontWeight.Bold)
+                }
+            }
+        },
+        dismissButton = {
+            if (isLastStep) {
+                TextButton(onClick = { onFinish(false) }) {
+                    Text(t("Don't Show Again", "फिर न दिखाएं"), color = Color.White.copy(alpha = 0.72f))
+                }
+            } else {
+                TextButton(onClick = { onFinish(false) }) {
+                    Text(t("Skip", "छोड़ें"), color = Color.White.copy(alpha = 0.72f))
+                }
+            }
+        }
+    )
+}
+
+@Composable
 fun DashboardFeatureCard(feature: FeatureItem, badgeCount: Int, modifier: Modifier = Modifier) {
     Card(
         onClick = feature.onClick,
@@ -860,4 +963,11 @@ fun DashboardFeatureCard(feature: FeatureItem, badgeCount: Int, modifier: Modifi
             }
         }
     }
+}
+
+fun isActiveAnniversaryMember(member: Member, allMembers: List<Member>): Boolean {
+    if (member.bereavementDate.isNullOrBlank().not()) return false
+    val partnerId = if (member.familyId.endsWith("0")) member.familyId.dropLast(1) else member.familyId + "0"
+    val partner = allMembers.find { it.familyId == partnerId }
+    return partner?.bereavementDate.isNullOrBlank()
 }

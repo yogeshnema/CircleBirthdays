@@ -25,6 +25,7 @@ import com.purawale.app.GameSession
 import com.purawale.app.Member
 import com.purawale.app.PlayingCard
 import com.purawale.app.Suit
+import com.purawale.app.t
 
 fun createDeck(): List<PlayingCard> {
     val ranks = listOf("A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K")
@@ -201,12 +202,31 @@ fun RummyScreen(
                 Spacer(Modifier.weight(1f))
 
                 // My Hand
-                Text(
-                    "Your Hand",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    modifier = Modifier.align(Alignment.Start).padding(bottom = 8.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        t("Your Hand", "आपके पत्ते"),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            arrangeHandBySequence(session, user, onUpdateState)
+                            selectedCard = null
+                        },
+                        enabled = myHand.size > 1 && session.winnerId == null,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.6f)),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(t("Arrange", "जमाएं"), fontWeight = FontWeight.Bold)
+                    }
+                }
                 
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy((-20).dp),
@@ -349,6 +369,28 @@ fun parseCard(cardStr: String): PlayingCard? {
         else -> rank.toIntOrNull() ?: 0
     }
     return PlayingCard(suit, rank, value)
+}
+
+fun arrangeHandBySequence(
+    session: GameSession,
+    user: Member,
+    onUpdateState: (Map<String, Any>, String?, String?) -> Unit
+) {
+    val handKey = "hand_${user.id}"
+    val myHand = (session.gameState[handKey] as? List<String>) ?: return
+    val arrangedHand = myHand
+        .mapNotNull { cardString -> parseCard(cardString)?.let { card -> cardString to card } }
+        .sortedWith(
+            compareBy<Pair<String, PlayingCard>> { it.second.suit.ordinal }
+                .thenBy { it.second.value }
+        )
+        .map { it.first }
+
+    if (arrangedHand == myHand || arrangedHand.size != myHand.size) return
+
+    val newState = session.gameState.toMutableMap()
+    newState[handKey] = arrangedHand
+    onUpdateState(newState, session.currentTurn, null)
 }
 
 fun drawCard(

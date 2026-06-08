@@ -227,7 +227,7 @@ fun CalendarScreen(allMembers: List<Member>, currentUser: Member, currentTreeId:
                                         val isToday = date == LocalDate.now()
                                         val p = panchangMap[date]
                                         val birthdays = visibleMembers.filter { it.bereavementDate.isNullOrBlank() && isSameDay(it.dateOfBirth, date) }
-                                        val anniversaries = visibleMembers.filter { it.bereavementDate.isNullOrBlank() && isSameDay(it.marriageDate, date) }
+                                        val anniversaries = visibleMembers.filter { isActiveAnniversaryMember(it, allMembers) && isSameDay(it.marriageDate, date) }
                                         val remembrances = visibleMembers.filter {
                                             !it.bereavementDate.isNullOrBlank() && (isSameDay(it.bereavementDate, date) || isSameDay(it.dateOfBirth, date))
                                         }
@@ -324,7 +324,7 @@ fun CalendarScreen(allMembers: List<Member>, currentUser: Member, currentTreeId:
                             .padding(8.dp)
                     ) {
                         val dayBirthdays = visibleMembers.filter { it.bereavementDate.isNullOrBlank() && isSameDay(it.dateOfBirth, selectedDate) }
-                        val dayAnniversaries = visibleMembers.filter { it.bereavementDate.isNullOrBlank() && isSameDay(it.marriageDate, selectedDate) }
+                        val dayAnniversaries = visibleMembers.filter { isActiveAnniversaryMember(it, allMembers) && isSameDay(it.marriageDate, selectedDate) }
                         val dayRemembrances = visibleMembers.filter {
                             !it.bereavementDate.isNullOrBlank() && (isSameDay(it.bereavementDate, selectedDate) || isSameDay(it.dateOfBirth, selectedDate))
                         }

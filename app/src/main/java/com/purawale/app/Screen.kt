@@ -19,6 +19,7 @@ sealed class Screen {
     object ActivityLog : Screen()
     object BusinessDirectory : Screen()
     object Achievements : Screen()
+    object Help : Screen()
     object Trivia : Screen()
     object ManageTrivia : Screen()
     data class GameLobby(val gameType: String) : Screen()

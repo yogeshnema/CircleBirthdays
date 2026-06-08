@@ -29,8 +29,8 @@ android {
         applicationId = "com.purawale.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 43
-        versionName = "2.0.0"
+        versionCode = 45
+        versionName = "2.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["MAPS_API_KEY"] = secretProperty("MAPS_API_KEY")

@@ -42,6 +42,7 @@ class MainViewModel : ViewModel() {
     var isLoading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     var selectedMemoryForFullScreen by mutableStateOf<Memory?>(null)
+    var showWelcomeTour by mutableStateOf(false)
 
     private val listeners = mutableListOf<ListenerRegistration>()
     private val userListeners = mutableListOf<ListenerRegistration>()
@@ -102,6 +103,7 @@ class MainViewModel : ViewModel() {
                         val userInList = populated.find { it.id == savedUserId }
                         if (userInList != null && (currentTime - lastLogin) < 10L * 24 * 60 * 60 * 1000) {
                             updateCurrentUser(userInList)
+                            updateWelcomeTourVisibility(currentUser ?: userInList, prefs)
                             currentScreen = Screen.Dashboard
                             viewModelScope.launch {
                                 FirebaseManager.updateLastLoggedIn(userInList.id)
@@ -229,6 +231,7 @@ class MainViewModel : ViewModel() {
         val loginUser = findLoginMember(phone)
         if (loginUser != null) {
             updateCurrentUser(loginUser)
+            updateWelcomeTourVisibility(currentUser ?: loginUser, prefs)
             loginError = null
             currentScreen = Screen.Dashboard
             prefs.edit {
@@ -247,10 +250,30 @@ class MainViewModel : ViewModel() {
         currentUser = null
         currentScreen = Screen.Login
         currentTreeId = "primary"
-        prefs.edit { clear() }
+        showWelcomeTour = false
+        prefs.edit {
+            remove("user_id")
+            remove("current_tree_id")
+            remove("last_login_time")
+        }
         userListeners.forEach { it.remove() }
         userListeners.clear()
         stopListeningToMessages()
+    }
+
+    fun finishWelcomeTour(prefs: android.content.SharedPreferences, showAgain: Boolean) {
+        val user = currentUser ?: return
+        prefs.edit { putBoolean(welcomeTourDismissedKey(user.id), !showAgain) }
+        showWelcomeTour = false
+    }
+
+    private fun updateWelcomeTourVisibility(user: Member, prefs: android.content.SharedPreferences) {
+        val isNonEditUser = !user.isAdmin && !user.isEditor && !user.secondaryTreeEnabled
+        showWelcomeTour = isNonEditUser && !prefs.getBoolean(welcomeTourDismissedKey(user.id), false)
+    }
+
+    private fun welcomeTourDismissedKey(userId: String): String {
+        return "welcome_tour_dismissed_$userId"
     }
 
     fun listenToMessages(otherMember: Member) {
@@ -389,6 +412,19 @@ class MainViewModel : ViewModel() {
                 FirebaseManager.deletePendingChange(memberId)
             } catch (e: Exception) {
                 error = e.message
+            }
+        }
+    }
+
+    fun approvePendingMember(member: Member) {
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                FirebaseManager.approveChange(member)
+            } catch (e: Exception) {
+                error = "Approval failed: ${e.message}"
+            } finally {
+                isLoading = false
             }
         }
     }

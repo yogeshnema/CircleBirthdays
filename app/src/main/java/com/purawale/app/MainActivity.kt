@@ -174,7 +174,7 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                         onLoginSuccess = { phone -> viewModel.login(phone, prefs) },
                         error = loginError ?: error,
                         isHindi = isHindi,
-                        onLanguageToggle = { viewModel.toggleLanguage() }
+                        onLanguageToggle = { viewModel.toggleLanguage(prefs) }
                     )
                     is Screen.Dashboard -> currentUser?.let { user ->
                         DashboardScreen(
@@ -204,9 +204,12 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                             onNavigateToFamilyGames = { viewModel.navigateTo(Screen.FamilyGames) },
                             onNavigateToBusinessDirectory = { viewModel.navigateTo(Screen.BusinessDirectory) },
                             onNavigateToAchievements = { viewModel.navigateTo(Screen.Achievements) },
+                            onNavigateToHelp = { viewModel.navigateTo(Screen.Help) },
                             onNavigateToLoginLog = { viewModel.navigateTo(Screen.LoginLog) },
                             onNavigateToActivityLog = { viewModel.navigateTo(Screen.ActivityLog) },
-                            onGenerateAICard = { member, type -> viewModel.navigateTo(Screen.AICardGenerator(member, type)) }
+                            onGenerateAICard = { member, type -> viewModel.navigateTo(Screen.AICardGenerator(member, type)) },
+                            showWelcomeTour = viewModel.showWelcomeTour,
+                            onFinishWelcomeTour = { showAgain -> viewModel.finishWelcomeTour(prefs, showAgain) }
                         )
                     }
                     is Screen.ProfileList -> currentUser?.let { user ->
@@ -221,7 +224,7 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                             onBack = { viewModel.navigateTo(Screen.Dashboard) },
                             onHome = { viewModel.navigateTo(Screen.Dashboard) },
                             onImportCsv = { uri -> viewModel.importMembersFromCsv(uri, context) },
-                            onApprove = { member -> viewModel.saveMember(member.copy(status = "APPROVED"), null) },
+                            onApprove = { member -> viewModel.approvePendingMember(member) },
                             onClearAll = { viewModel.clearAllMembers() },
                             onChat = { member -> viewModel.navigateTo(Screen.Chat(member)) },
                             overrides = viewModel.relationshipOverrides,
@@ -515,6 +518,10 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                             onDeleteAchievement = { id -> viewModel.deleteAchievement(id) }
                         )
                     }
+                    is Screen.Help -> HelpScreen(
+                        onBack = { viewModel.navigateTo(Screen.Dashboard) },
+                        onHome = { viewModel.navigateTo(Screen.Dashboard) }
+                    )
                     is Screen.Emergency -> currentUser?.let { user ->
                         EmergencyScreen(
                             currentUser = user,
@@ -556,7 +563,7 @@ fun CircleBirthdaysApp(intent: Intent? = null) {
                     currentScreen is Screen.Antakshari
 
             // AI Chat Assistant
-            if (currentScreen !is Screen.Login && !isGameScreen) {
+            if (currentScreen !is Screen.Login && currentScreen !is Screen.FamilyTree && !isGameScreen) {
                 AIChatAssistant(
                     allMembers = allMembers,
                     currentUser = currentUser
